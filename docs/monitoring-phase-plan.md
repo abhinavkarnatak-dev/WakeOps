@@ -1,80 +1,57 @@
-# Monitoring phase plan
+# Grafana monitoring phase plan
 
-Phase 3 will be taught and built in small checkpoints. We will verify each checkpoint before moving
-to the next one. Having an EC2 instance does not mean WakeOps can automatically identify every
-container or service on it. We must deliberately add labels that describe the host, container,
-service, and environment.
+WakeOps supports Grafana as its monitoring webhook provider. This keeps the project focused while
+still allowing Grafana to visualize and alert on many data sources. A company may connect Prometheus,
+CloudWatch, or another metrics source to Grafana, but WakeOps only needs to understand Grafana's
+webhook format.
 
 ## The identity we need
 
-An alert should eventually carry enough information to answer:
+A service-specific alert should provide these labels:
 
-- Which organization sent it?
-- Which monitoring connection sent it?
-- Which host is affected, such as EC2 instance `i-111`?
-- Which service is affected, such as `payment-service`, when known?
-- Which environment is affected, such as `production`?
-- What alert fired and how severe is it?
+- `alertname`: the rule or problem name;
+- `service`: the WakeOps application name;
+- `environment`: the WakeOps environment name;
+- `instance`: the host or resource identifier;
+- `severity`: the incident severity.
 
-If several services share one host and the alert only says the host CPU is high, WakeOps does not
-invent a service or contact. It records the mapping problem so it can be configured explicitly. If
-the alert includes a trusted service label, WakeOps uses the matching service deployment and its
-contacts.
+Useful annotations include `summary`, `description`, and `runbook_url`. Labels are used for reliable
+matching. Annotations are human-readable context and must not be used as trusted identifiers.
 
 ## Checkpoints
 
-### 1. Inspect the EC2 setup
+### 1. Test the contact point
 
-We will first record the operating system, Docker installation, running containers, Compose files,
-container names, exposed ports, and how each container maps to a WakeOps application. This is a
-read-only learning step. We will not install or change anything yet.
+Create a Grafana Webhook contact point, configure Bearer authentication, and send the predefined
+test. WakeOps should show a green connection result.
 
-### 2. Run a small metrics example
+### 2. Inspect a custom test payload
 
-We will expose a simple metrics endpoint from a test service and look at the raw text in a browser or
-with a command. This makes Prometheus metrics understandable before introducing Prometheus itself.
+Use Grafana's custom test option to send the proposed labels. WakeOps shows an allowlisted preview of
+the labels and annotations it received. We verify the real field names before enforcing them.
 
-### 3. Add Prometheus
+### 3. Normalize the alert
 
-We will run Prometheus, explain its configuration file, and add one scrape target. Then we will use
-the Prometheus UI to confirm that data is being collected. We will label the target with the service,
-environment, and host identity that WakeOps needs.
+Convert the Grafana payload into WakeOps' provider-neutral incident alert type. Validate important
+fields and give a clear error when required labels are absent.
 
-### 4. Create one alert rule
+### 4. Map the alert
 
-We will add one safe test alert, inspect its pending and firing states, and learn why alert rules need
-a duration instead of firing on every brief spike.
+Match `instance`, `service`, and `environment` to the host and service deployment configured in
+WakeOps. Unknown or ambiguous mappings must be visible and must never be guessed.
 
-### 5. Add Alertmanager
+### 5. Create one controlled alert rule
 
-We will route the Prometheus alert to Alertmanager. We will inspect Alertmanager's payload before
-WakeOps accepts it. Alertmanager, not Prometheus itself, normally sends the webhook.
+Create a safe Grafana test rule, attach the contact point, and watch it move from normal to firing.
+Confirm that WakeOps receives both firing and resolved notifications.
 
-### 6. Build the WakeOps Alertmanager webhook
+### 6. Add dedupe and incident creation
 
-We will create the endpoint, secret verification, payload validation, and provider adapter. The
-adapter will convert Alertmanager data into the common WakeOps alert format. At first it will only
-log safe normalized test output and return quickly.
+Calculate a stable fingerprint, store every alert event, and create only one active incident for
+duplicate deliveries of the same problem.
 
-### 7. Map the alert to the saved host and service
+## Scope boundary
 
-We will match the external host identifier and optional service label to the Phase 2 records. We will
-test a service-specific alert, a host-only alert, and an unknown mapping. Unknown mappings will be
-visible as errors and will never be guessed.
-
-### 8. Add Grafana
-
-Once Prometheus is understood, Grafana becomes easier. We will connect Grafana to Prometheus, build a
-small dashboard, and then configure a Grafana webhook alert separately. This shows the difference
-between Grafana displaying data and Grafana sending an alert.
-
-### 9. Add CloudWatch
-
-CloudWatch has a different delivery path. We will learn one EC2 alarm first, then send state changes
-through SNS or EventBridge using least-privilege AWS permissions. Its adapter will produce the same
-internal alert format as Alertmanager and Grafana.
-
-## Rule for the phase
-
-We will not configure Prometheus, Grafana, and CloudWatch all at once. Each checkpoint must have a
-visible test result and a short explanation of the data flow before the next checkpoint starts.
+WakeOps does not implement separate Prometheus Alertmanager or AWS CloudWatch webhook adapters. Those
+systems may still supply data to Grafana. Internal WakeOps observability may later use Prometheus-style
+metrics, which is separate from customer monitoring integrations.

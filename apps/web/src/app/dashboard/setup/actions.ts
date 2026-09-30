@@ -75,7 +75,7 @@ export async function saveSetup(_state: SetupState, form: FormData): Promise<Set
       const data = {
         organizationId,
         name: value.name,
-        source: value.source,
+        source: 'GRAFANA' as const,
         externalIdentifier: value.externalIdentifier,
       };
       if (operation === 'update') {

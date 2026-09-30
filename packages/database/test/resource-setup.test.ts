@@ -32,7 +32,7 @@ describe('resource ownership database rules', () => {
           data: {
             organizationId: org.id,
             name: 'Host',
-            source: 'CLOUDWATCH',
+            source: 'GRAFANA',
             externalIdentifier: 'i-test',
           },
         });
@@ -88,7 +88,7 @@ describe('resource ownership database rules', () => {
           data: {
             organizationId: org.id,
             name: 'Host',
-            source: 'CLOUDWATCH',
+            source: 'GRAFANA',
             externalIdentifier: 'i-test',
           },
         });
@@ -119,7 +119,7 @@ describe('resource ownership database rules', () => {
           data: {
             organizationId: org.id,
             name: 'Host',
-            source: 'CLOUDWATCH',
+            source: 'GRAFANA',
             externalIdentifier: 'i-test',
           },
         });

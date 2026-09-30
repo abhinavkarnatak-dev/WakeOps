@@ -19,7 +19,13 @@ host can run many services, and contacts are assigned once for each deployed ser
 organization admins can save setup. Phone numbers are validated in
 international format and masked in the saved contact list. Engineers do not need product accounts.
 
-No voice, monitoring, Temporal, RabbitMQ, or AI provider code is implemented yet.
+No production incident creation, voice, Temporal, RabbitMQ, or AI provider code is implemented yet.
+
+Phase 3 has started with a safe Grafana connection test. Grafana can send its contact-point test
+notification to `POST /webhooks/grafana/:organizationId`. Each organization generates its own
+Bearer secret. WakeOps stores only the secret hash, validates the JSON, stores a small test receipt,
+and shows the result at `/dashboard/integrations`. This checkpoint does not create an incident or
+contact an engineer.
 
 ## Repository layout
 
@@ -121,7 +127,8 @@ Manual onboarding test:
 The complete planned list is in `.env.example`. Only PostgreSQL and Google/Auth.js variables are
 needed in this milestone.
 
-- **Core:** `NODE_ENV`, `WEB_URL`, `API_URL`, `PORT`, `LOG_LEVEL`, `ENCRYPTION_KEY`
+- **Core:** `NODE_ENV`, `WEB_URL`, `API_URL`, `WEBHOOK_PUBLIC_BASE_URL`, `PORT`, `LOG_LEVEL`,
+  `ENCRYPTION_KEY`
 - **PostgreSQL:** `DATABASE_URL`
 - **Google/Auth.js:** `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`
 - **Temporal:** `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, `TEMPORAL_TASK_QUEUE`,
@@ -137,8 +144,6 @@ needed in this milestone.
   `SLACK_REDIRECT_URI`
 - **GitHub App:** `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_WEBHOOK_SECRET`,
   `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
-- **Monitoring:** `ALERTMANAGER_WEBHOOK_SECRET`, `GRAFANA_WEBHOOK_SECRET`,
-  `AWS_SNS_ALLOWED_TOPIC_ARNS`
 - **ChatGPT plan connection:** `OPENAI_CHATGPT_CLIENT_ID`, `OPENAI_CHATGPT_REDIRECT_URI`; only for
   an approved official Sign in with ChatGPT integration - never copied Codex CLI credentials
 - **Observability:** `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`,
@@ -150,11 +155,11 @@ needed in this milestone.
   records cannot be deleted until their service deployments or host links are removed. Deleting a
   host removes all of its service deployments and assignments. Rotating on-call schedules,
   repository mappings, and notification destinations will be added in later milestones.
-- A resource identifier is unique within its organization and monitoring source. Monitoring
-  integrations will add an integration-specific identity boundary later.
+- A Grafana resource identifier is unique within its organization. Each organization currently has
+  one Grafana integration. Supporting several Grafana instances per organization can be added later.
 - Google login requires real OAuth credentials and a running PostgreSQL database.
-- The local Compose file starts only PostgreSQL today. Redis, RabbitMQ, Prometheus, and Grafana will
-  be added when the application actually uses them.
+- The local Compose file starts only PostgreSQL today. Redis and RabbitMQ will be added when the
+  application actually uses them. Grafana may be hosted separately or run locally for learning.
 - Auth.js v5 is currently installed from its beta release line because it provides the modern
   Next.js App Router API. We keep its usage behind `src/auth.ts` so an upgrade is localized.
 
@@ -166,7 +171,7 @@ order is in [docs/monitoring-phase-plan.md](docs/monitoring-phase-plan.md).
 1. Sign in and open **Manage organization setup** on the dashboard.
 2. Add two engineers with valid email addresses. Select their countries and enter their local numbers.
 3. Add `payment-service`, `auth-service`, and `production`.
-4. Add one CloudWatch host with identifier `i-111`.
+4. Add one Grafana-monitored host with identifier `i-111`.
 5. Attach both services to the same host and choose contacts for each service.
 6. Confirm the host card shows both services and the dashboard reports one host and two deployments.
 7. Try attaching the same service and environment to the same host twice. It should reject the duplicate.
@@ -195,3 +200,16 @@ docker compose up -d --wait postgres
 ```
 
 No new provider secrets are required for milestone 2.
+
+## Test the Grafana webhook
+
+1. Start the API and web app.
+2. Open `/dashboard/integrations` and generate Grafana credentials.
+3. Copy the secret when it is shown. WakeOps will not show it again.
+4. In a Grafana Webhook contact point, use the URL shown on the integrations page.
+5. Set the authorization scheme to `Bearer` and paste the generated secret into credentials.
+6. Click Grafana's Test button.
+7. The WakeOps page should show the received alert and connected status within a few seconds.
+
+Grafana running in local Docker should use `host.docker.internal` instead of `localhost` to reach
+the API on the host computer. Grafana Cloud requires a publicly reachable HTTPS API URL.

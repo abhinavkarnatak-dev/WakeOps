@@ -42,12 +42,20 @@ export default async function DashboardPage() {
             </div>
           ))}
         </div>
-        <Link
-          href="/dashboard/setup"
-          className="mt-6 inline-block rounded-lg bg-cyan-300 px-5 py-3 font-semibold text-slate-950"
-        >
-          Manage organization setup
-        </Link>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/dashboard/setup"
+            className="inline-block rounded-lg bg-cyan-300 px-5 py-3 font-semibold text-slate-950"
+          >
+            Manage organization setup
+          </Link>
+          <Link
+            href="/dashboard/integrations"
+            className="inline-block rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100"
+          >
+            Test integrations
+          </Link>
+        </div>
       </section>
     </main>
   );

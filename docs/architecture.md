@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart LR
-    M[Prometheus / Grafana / CloudWatch] --> API[Express API]
+    M[Grafana Alerting] --> API[Express API]
     API --> A[Normalize and map alert]
     A --> DB[(PostgreSQL)]
     A --> T[Temporal workflow]
@@ -51,8 +51,8 @@ be added later.
 ## Module responsibilities
 
 - `database`: the one PostgreSQL schema and client. It stores durable product facts.
-- `integrations`: provider-specific connection and payload code. It prevents Grafana, Alertmanager,
-  AWS, GitHub, and Slack formats from leaking into incident business rules.
+- `integrations`: Grafana webhook parsing plus future GitHub and Slack connection code. It prevents
+  external provider formats from leaking into incident business rules.
 - `alerts`: turns provider payloads into one alert type, maps resources, and calculates a stable
   fingerprint so duplicate webhooks do not create duplicate incidents.
 - `incidents`: creates incidents and records status/timeline changes.

@@ -208,13 +208,6 @@ export default async function SetupPage() {
                 className={fieldClass}
               />
             </Field>
-            <Field label="Monitoring source">
-              <select name="source" className={fieldClass}>
-                <option value="ALERTMANAGER">Prometheus / Alertmanager</option>
-                <option value="GRAFANA">Grafana</option>
-                <option value="CLOUDWATCH">AWS CloudWatch</option>
-              </select>
-            </Field>
             <Field label="External resource identifier">
               <input
                 name="externalIdentifier"
@@ -277,7 +270,7 @@ export default async function SetupPage() {
                       <>
                         <p className="text-lg font-semibold">{resource.name}</p>
                         <p className="mt-1 text-slate-400">
-                          {resource.source} - {resource.externalIdentifier}
+                          Grafana identifier: {resource.externalIdentifier}
                         </p>
                       </>
                     }
@@ -292,17 +285,6 @@ export default async function SetupPage() {
                             defaultValue={resource.name}
                             className={fieldClass}
                           />
-                        </Field>
-                        <Field label="Monitoring source">
-                          <select
-                            name="source"
-                            defaultValue={resource.source}
-                            className={fieldClass}
-                          >
-                            <option value="ALERTMANAGER">Prometheus / Alertmanager</option>
-                            <option value="GRAFANA">Grafana</option>
-                            <option value="CLOUDWATCH">AWS CloudWatch</option>
-                          </select>
                         </Field>
                         <Field label="External resource identifier">
                           <input

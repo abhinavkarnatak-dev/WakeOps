@@ -46,7 +46,6 @@ const contactAssignment = z
 
 export const hostSchema = z.object({
   name,
-  source: z.enum(['ALERTMANAGER', 'GRAFANA', 'CLOUDWATCH']),
   externalIdentifier: z.string().trim().min(1).max(200),
 });
 

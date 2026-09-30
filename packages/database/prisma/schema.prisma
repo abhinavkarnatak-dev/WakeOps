@@ -62,22 +62,48 @@ model VerificationToken {
 }
 
 model Organization {
-  id           String              @id @default(cuid())
-  name         String
-  slug         String              @unique
-  memberships  Membership[]
-  engineers    Engineer[]
-  applications Application[]
-  environments Environment[]
-  resources    MonitoredResource[]
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  id                 String                  @id @default(cuid())
+  name               String
+  slug               String                  @unique
+  memberships        Membership[]
+  engineers          Engineer[]
+  applications       Application[]
+  environments       Environment[]
+  resources          MonitoredResource[]
+  grafanaIntegration GrafanaIntegration?
+  webhookTests       MonitoringWebhookTest[]
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+}
+
+model GrafanaIntegration {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  secretHash     String
+  secretHint     String
+  lastVerifiedAt DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model MonitoringWebhookTest {
+  id             String           @id @default(cuid())
+  organizationId String
+  source         MonitoringSource
+  receiver       String?
+  status         String
+  alertCount     Int
+  alertName      String?
+  payloadPreview Json?
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  receivedAt     DateTime         @default(now())
+
+  @@index([organizationId, source, receivedAt])
 }
 
 enum MonitoringSource {
-  ALERTMANAGER
   GRAFANA
-  CLOUDWATCH
 }
 
 model Engineer {
