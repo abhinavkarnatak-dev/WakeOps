@@ -50,6 +50,11 @@ Confirm that WakeOps receives both firing and resolved notifications.
 Calculate a stable fingerprint, store every alert event, and create only one active incident for
 duplicate deliveries of the same problem.
 
+### 7. Start the durable incident workflow - complete
+
+Start one Temporal workflow per incident. Repeated firing deliveries reuse the same workflow.
+Resolved notifications signal and complete it. The worker may restart without losing the wait state.
+
 ## Scope boundary
 
 WakeOps does not implement separate Prometheus Alertmanager or AWS CloudWatch webhook adapters. Those

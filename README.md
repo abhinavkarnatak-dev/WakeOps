@@ -10,7 +10,7 @@ Milestone 1 currently includes:
 - a Next.js landing page, Google sign-in, and organization onboarding;
 - an Express API with a lightweight `GET /health` endpoint;
 - a PostgreSQL/Prisma schema for users, OAuth accounts, sessions, organizations, and memberships;
-- a placeholder worker deployable for later Temporal and RabbitMQ consumers;
+- a separate worker process for Temporal workflows and later RabbitMQ consumers;
 - strict TypeScript, formatting, linting, and initial tests.
 
 Milestone 2 adds organization setup at `/dashboard/setup`: engineer contacts, applications,
@@ -19,7 +19,7 @@ host can run many services, and contacts are assigned once for each deployed ser
 organization admins can save setup. Phone numbers are validated in
 international format and masked in the saved contact list. Engineers do not need product accounts.
 
-Voice, Temporal, RabbitMQ, and AI provider code are not implemented yet.
+Voice, RabbitMQ, and AI provider code are not implemented yet.
 
 Phase 3 added a safe Grafana connection test. Grafana can send its contact-point test
 notification to `POST /webhooks/grafana/:organizationId`. Each organization generates its own
@@ -31,20 +31,26 @@ engineers, calculates stable fingerprints, stores every meaningful alert event, 
 updates one active incident. Exact repeated deliveries are ignored safely. Resolved notifications
 close the matching active incident, while a later recurrence can create a new incident.
 
+Phase 5 connects incident creation to Temporal Cloud. A new or repeated firing alert idempotently
+starts one workflow named `incident-{incidentId}`. The worker changes the incident to `NOTIFYING`
+and waits durably for acknowledgement or resolution. Acknowledgement does not resolve the incident.
+A resolved Grafana notification signals the workflow and completes it. Worker restarts do not lose
+workflow progress.
+
 ## Repository layout
 
 ```text
 apps/
   web/          Next.js UI, Google sign-in, onboarding, and later the dashboard
   api/          Express HTTP API, provider webhooks, callbacks, and voice WebSocket endpoint
-  workers/      Temporal workers and RabbitMQ notification consumers (later)
+  workers/      Temporal worker, database Activities, and later RabbitMQ consumers
 packages/
   database/     Prisma schema and shared PostgreSQL client
   shared/       Small provider-neutral types and validation helpers
   integrations/ Grafana parsing plus future GitHub and Slack connection adapters
   alerts/       Common alert model, normalization, fingerprints, and delivery keys
   incidents/    Resource mapping, dedupe, incident creation, resolution, and audit events
-  workflows/    Deterministic Temporal workflow definitions and activities (later)
+  workflows/    Deterministic Temporal workflows, signals, state, and Activity contracts
   telephony/    Twilio calls and callback handling (later)
   voice/        Twilio media, Deepgram, ElevenLabs, and turn control (later)
   agent/        LLM provider, read-only tools, and per-call session context (later)
@@ -68,7 +74,7 @@ package its own configuration when real code arrives.
   email/Slack consumers. This process can be restarted without losing durable Temporal progress.
 - **PostgreSQL:** permanent product truth.
 - **Redis later:** cache and rate limiting only.
-- **Temporal later:** durable incident workflow progress.
+- **Temporal Cloud:** durable incident workflow progress and timers.
 - **RabbitMQ later:** independent notification delivery.
 
 For a small deployment, API and worker code can use the same repository and shared packages, while
@@ -79,8 +85,8 @@ without introducing microservices.
 
 Requirements: Node.js 22+, npm, Docker, and Google OAuth credentials.
 
-1. Copy `.env.example` to `.env` and fill in `AUTH_SECRET`, `AUTH_GOOGLE_ID`, and
-   `AUTH_GOOGLE_SECRET`.
+1. Copy `.env.example` to `.env.local` and fill in PostgreSQL, Google/Auth.js, and Temporal Cloud
+   values.
 2. In Google Cloud, add this local redirect URI:
    `http://localhost:3000/api/auth/callback/google`.
 3. Start PostgreSQL:
@@ -97,13 +103,14 @@ Requirements: Node.js 22+, npm, Docker, and Google OAuth credentials.
    npm run db:migrate
    ```
 
-5. Start the web app and API:
+5. Start the web app, API, and Temporal worker:
 
    ```bash
    npm run dev
    ```
 
-Open `http://localhost:3000`. The API health endpoint is `http://localhost:4000/health`.
+Open `http://localhost:3000`. The API health endpoint is `http://localhost:4000/health`. The worker
+connects to Temporal Cloud and polls the queue configured by `TEMPORAL_TASK_QUEUE`.
 
 Generate `AUTH_SECRET` with `npx auth secret` or another cryptographically secure random generator.
 Do not commit the resulting `.env` file.
@@ -128,8 +135,8 @@ Manual onboarding test:
 
 ## Environment variables
 
-The complete planned list is in `.env.example`. Only PostgreSQL and Google/Auth.js variables are
-needed in this milestone.
+The complete planned list is in `.env.example`. PostgreSQL, Google/Auth.js, Grafana, and Temporal
+Cloud configuration are used by the implemented milestones.
 
 - **Core:** `NODE_ENV`, `WEB_URL`, `API_URL`, `WEBHOOK_PUBLIC_BASE_URL`, `PORT`, `LOG_LEVEL`,
   `ENCRYPTION_KEY`
@@ -166,6 +173,8 @@ needed in this milestone.
   application actually uses them. Grafana may be hosted separately or run locally for learning.
 - Auth.js v5 is currently installed from its beta release line because it provides the modern
   Next.js App Router API. We keep its usage behind `src/auth.ts` so an upgrade is localized.
+- Temporal acknowledgement signals can currently be sent by code, but the voice agent and dashboard
+  acknowledgement buttons arrive in later phases.
 
 See [docs/architecture.md](docs/architecture.md) for the architecture and flow. The guided monitoring
 order is in [docs/monitoring-phase-plan.md](docs/monitoring-phase-plan.md).
@@ -217,3 +226,15 @@ No new provider secrets are required for milestone 2.
 
 Grafana running in local Docker should use `host.docker.internal` instead of `localhost` to reach
 the API on the host computer. Grafana Cloud requires a publicly reachable HTTPS API URL.
+
+## Test the Temporal workflow
+
+1. Keep the Temporal worker running with `npm run dev -w @wakeops/workers`.
+2. Send a mapped custom firing test from Grafana.
+3. Open Temporal Cloud and find `incident-{incidentId}`.
+4. Confirm the workflow is running and the PostgreSQL incident is `NOTIFYING`.
+5. Send the matching resolved notification from Grafana.
+6. Confirm Temporal marks the workflow completed and PostgreSQL marks the incident `RESOLVED`.
+
+The workflow Activity retry policy handles temporary technical failures such as a database timeout.
+No-answer call retries and engineer escalation are business rules and will be added with Twilio.

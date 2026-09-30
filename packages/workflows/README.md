@@ -1,3 +1,3 @@
 # Workflows
 
-Future deterministic Temporal workflows and their external-operation Activities.
+Deterministic Temporal incident workflows and their shared Activity contracts.

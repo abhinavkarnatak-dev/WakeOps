@@ -4,18 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --env-file=../../.env.local src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run src"
   },
   "dependencies": {
+    "@temporalio/client": "1.24.0",
     "@wakeops/alerts": "*",
     "@wakeops/database": "*",
     "@wakeops/incidents": "*",
     "@wakeops/integrations": "*",
     "@wakeops/shared": "*",
+    "@wakeops/workflows": "*",
     "express": "5.2.1",
     "pino": "10.3.1",
     "pino-http": "11.0.0",

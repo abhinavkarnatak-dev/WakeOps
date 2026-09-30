@@ -8,9 +8,11 @@ flowchart LR
     API --> A[Normalize and map alert]
     A --> I[Deduplicate and create incident]
     I --> DB[(PostgreSQL)]
-    I -. future .-> T[Temporal workflow]
-    T --> V[Twilio voice path]
-    T --> Q[RabbitMQ notification event]
+    I --> T[Temporal incident workflow]
+    T --> W[Temporal worker Activities]
+    W --> DB
+    T -. future .-> V[Twilio voice path]
+    T -. future .-> Q[RabbitMQ notification event]
     Q --> E[Email worker]
     Q --> S[Slack worker]
     V --> P[Engineer phone]
@@ -20,8 +22,8 @@ flowchart LR
     C --> EL[ElevenLabs TTS]
 ```
 
-The solid Grafana-to-PostgreSQL path is implemented. Components after the dotted Temporal edge are
-future phases.
+The solid path through Temporal and PostgreSQL is implemented. The dotted Twilio and RabbitMQ paths
+are future phases.
 
 ## Organization ownership
 
@@ -69,8 +71,9 @@ is stored as another event on the same incident.
   exact delivery keys.
 - `incidents`: maps resources, deduplicates deliveries, creates or resolves incidents, and records
   the durable audit timeline.
-- `workflows`: Temporal workflow decisions and the Activities that perform outside work. Workflow
-  code decides what should happen; Activities call databases and providers.
+- `workflows`: deterministic Temporal workflow decisions, signals, queries, state transitions, and
+  Activity contracts. Workflow code decides what should happen without directly calling databases
+  or providers.
 - `telephony`: starts Twilio calls and idempotently handles status callbacks.
 - `voice`: moves mu-law audio between Twilio, Deepgram, and ElevenLabs and owns listening, speaking
   and interruption state.
@@ -99,6 +102,20 @@ The API must answer webhooks and callbacks quickly and host voice WebSockets. Te
 RabbitMQ consumers spend their time polling and performing background work. Separating their
 processes prevents a busy notification queue from slowing HTTP requests, while all code still lives
 in one understandable monorepo.
+
+## Temporal incident flow
+
+The API uses `incident-{incidentId}` as the workflow ID. Starting the same incident again returns the
+existing workflow instead of creating another one. This protects us when Grafana retries a webhook.
+
+The workflow receives only the incident ID. A worker Activity loads the current PostgreSQL state and
+moves an open incident to `NOTIFYING`. The workflow then waits without consuming a busy thread.
+Acknowledgement changes the incident to `ACKNOWLEDGED`, but the workflow continues waiting because
+acknowledged and resolved mean different things. A resolution signal changes the incident to
+`RESOLVED` and completes the workflow.
+
+Temporal retries a failed Activity for temporary technical problems. Future no-answer retries are
+business decisions implemented explicitly with workflow timers. These are separate mechanisms.
 
 ## ChatGPT plan connection boundary
 

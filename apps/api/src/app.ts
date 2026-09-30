@@ -5,6 +5,7 @@ import { matchesGrafanaWebhookSecret, normalizeGrafanaWebhook } from '@wakeops/i
 import { processAlerts } from '@wakeops/incidents';
 
 import { createGrafanaWebhookRouter } from './grafana-webhook.js';
+import { syncIncidentWorkflows } from './incident-workflow.js';
 import { logger } from './logger.js';
 
 type AppOptions = {
@@ -64,7 +65,10 @@ async function recordGrafanaTest(
 }
 
 async function processGrafanaAlerts(organizationId: string, payload: unknown) {
-  return processAlerts(database, normalizeGrafanaWebhook(payload, organizationId));
+  const alerts = normalizeGrafanaWebhook(payload, organizationId);
+  const results = await processAlerts(database, alerts);
+  await syncIncidentWorkflows(alerts, results);
+  return results;
 }
 
 export function createApp(options: AppOptions = {}) {
