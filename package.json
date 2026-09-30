@@ -1,0 +1,29 @@
+{
+  "name": "wakeops",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,green \"npm run dev -w @wakeops/web\" \"npm run dev -w @wakeops/api\"",
+    "build": "npm run db:generate && npm run build -w @wakeops/shared && npm run build -w @wakeops/database && npm run build -w @wakeops/api && npm run build -w @wakeops/workers && npm run build -w @wakeops/web",
+    "typecheck": "npm run db:generate && npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "npm run db:generate -w @wakeops/database",
+    "db:migrate": "npm run db:migrate -w @wakeops/database",
+    "db:studio": "npm run db:studio -w @wakeops/database"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.5",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3"
+  }
+}

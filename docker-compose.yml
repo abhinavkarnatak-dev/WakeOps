@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: wakeops
+      POSTGRES_PASSWORD: wakeops
+      POSTGRES_DB: wakeops
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - wakeops-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U wakeops -d wakeops']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  wakeops-postgres:
