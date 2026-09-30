@@ -62,12 +62,112 @@ model VerificationToken {
 }
 
 model Organization {
-  id          String       @id @default(cuid())
-  name        String
-  slug        String       @unique
-  memberships Membership[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id           String              @id @default(cuid())
+  name         String
+  slug         String              @unique
+  memberships  Membership[]
+  engineers    Engineer[]
+  applications Application[]
+  environments Environment[]
+  resources    MonitoredResource[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+enum MonitoringSource {
+  ALERTMANAGER
+  GRAFANA
+  CLOUDWATCH
+}
+
+model Engineer {
+  id                   String             @id @default(cuid())
+  organizationId       String
+  name                 String
+  email                String
+  phoneNumber          String
+  phoneCountry         String?
+  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  primaryAssignments   OnCallAssignment[] @relation("PrimaryEngineer")
+  secondaryAssignments OnCallAssignment[] @relation("SecondaryEngineer")
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, email])
+}
+
+model Application {
+  id             String            @id @default(cuid())
+  organizationId String
+  name           String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mappings       ResourceMapping[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, name])
+}
+
+model Environment {
+  id             String            @id @default(cuid())
+  organizationId String
+  name           String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mappings       ResourceMapping[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, name])
+}
+
+model MonitoredResource {
+  id                 String            @id @default(cuid())
+  organizationId     String
+  source             MonitoringSource
+  externalIdentifier String
+  name               String
+  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mappings           ResourceMapping[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, source, externalIdentifier])
+}
+
+model ResourceMapping {
+  id             String            @id @default(cuid())
+  organizationId String
+  resourceId     String
+  applicationId  String
+  environmentId  String
+  resource       MonitoredResource @relation(fields: [organizationId, resourceId], references: [organizationId, id], onDelete: Cascade)
+  application    Application       @relation(fields: [organizationId, applicationId], references: [organizationId, id], onDelete: Restrict)
+  environment    Environment       @relation(fields: [organizationId, environmentId], references: [organizationId, id], onDelete: Restrict)
+  assignment     OnCallAssignment?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, resourceId, applicationId, environmentId])
+}
+
+model OnCallAssignment {
+  id                  String          @id @default(cuid())
+  organizationId      String
+  mappingId           String          @unique
+  primaryEngineerId   String
+  secondaryEngineerId String?
+  mapping             ResourceMapping @relation(fields: [organizationId, mappingId], references: [organizationId, id], onDelete: Cascade)
+  primaryEngineer     Engineer        @relation("PrimaryEngineer", fields: [organizationId, primaryEngineerId], references: [organizationId, id], onDelete: Restrict)
+  secondaryEngineer   Engineer?       @relation("SecondaryEngineer", fields: [organizationId, secondaryEngineerId], references: [organizationId, id], onDelete: Restrict)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@unique([organizationId, mappingId])
 }
 
 model Membership {

@@ -21,7 +21,34 @@ flowchart LR
 
 Dashed/future components are described here but are not implemented in milestone 1.
 
-## Major modules
+## Organization ownership
+
+```mermaid
+flowchart TD
+    O[Organization] --> E[Engineer contacts]
+    O --> A[Applications]
+    O --> ENV[Environments]
+    O --> R[Monitored hosts]
+    R --> M[Service deployments]
+    A --> M
+    ENV --> M
+    M --> OC[On-call assignment]
+    E --> OC
+    OC --> P[Primary contact]
+    OC --> S[Optional secondary contact]
+```
+
+One host can have many service deployments. For example, EC2 instance `i-111` can run both
+`payment-service` and `auth-service` in production. Each service deployment has one contact
+assignment. WakeOps will not guess a service when an alert only identifies a shared host. That alert
+will remain unmapped until we introduce an explicit host-only routing policy.
+
+Database relations include the organization ID so another organization's records cannot be linked
+accidentally. Creating a service deployment and its assignment uses one transaction. This means both
+changes succeed together, or neither is saved. Scheduling and monitoring connection identities will
+be added later.
+
+## Module responsibilities
 
 - `database`: the one PostgreSQL schema and client. It stores durable product facts.
 - `integrations`: provider-specific connection and payload code. It prevents Grafana, Alertmanager,

@@ -1,18 +1,18 @@
 import { database } from '@wakeops/database';
-import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
-import { auth } from '@/auth';
+import { requireOrganization } from '@/lib/organization';
 import { SignOutButton } from '@/components/sign-out-button';
 
 export default async function DashboardPage() {
-  const session = await auth();
-  if (!session?.user.id) redirect('/login');
-
-  const membership = await database.membership.findFirst({
-    where: { userId: session.user.id },
-    include: { organization: true },
-  });
-  if (!membership) redirect('/onboarding');
+  const membership = await requireOrganization();
+  const organizationId = membership.organizationId;
+  const [engineers, applications, hosts, deployments] = await Promise.all([
+    database.engineer.count({ where: { organizationId } }),
+    database.application.count({ where: { organizationId } }),
+    database.monitoredResource.count({ where: { organizationId } }),
+    database.resourceMapping.count({ where: { organizationId } }),
+  ]);
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-8">
@@ -25,19 +25,29 @@ export default async function DashboardPage() {
       </header>
 
       <section className="py-10">
-        <h2 className="text-xl font-semibold">Organization created</h2>
+        <h2 className="text-xl font-semibold">Set up incident ownership</h2>
         <p className="mt-2 max-w-2xl text-slate-300">
-          Authentication and the first onboarding step are working. Monitoring integrations,
-          engineers, resource mapping, and incidents will be added milestone by milestone.
+          Add engineers and map monitored resources to the services they run. These mappings tell
+          WakeOps who to contact when an alert arrives.
         </p>
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          {['Connect monitoring', 'Add engineers', 'Map applications'].map((label) => (
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            `${engineers} engineers`,
+            `${applications} applications`,
+            `${hosts} monitored hosts`,
+            `${deployments} service deployments`,
+          ].map((label) => (
             <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-5" key={label}>
               <p className="font-medium">{label}</p>
-              <p className="mt-2 text-sm text-slate-400">Coming in the next milestones</p>
             </div>
           ))}
         </div>
+        <Link
+          href="/dashboard/setup"
+          className="mt-6 inline-block rounded-lg bg-cyan-300 px-5 py-3 font-semibold text-slate-950"
+        >
+          Manage organization setup
+        </Link>
       </section>
     </main>
   );

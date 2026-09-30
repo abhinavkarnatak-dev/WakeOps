@@ -13,6 +13,12 @@ Milestone 1 currently includes:
 - a placeholder worker deployable for later Temporal and RabbitMQ consumers;
 - strict TypeScript, formatting, linting, and initial tests.
 
+Milestone 2 adds organization setup at `/dashboard/setup`: engineer contacts, applications,
+environments, monitored hosts, service deployments, and primary/secondary on-call assignments. One
+host can run many services, and contacts are assigned once for each deployed service. Only
+organization admins can save setup. Phone numbers are validated in
+international format and masked in the saved contact list. Engineers do not need product accounts.
+
 No voice, monitoring, Temporal, RabbitMQ, or AI provider code is implemented yet.
 
 ## Repository layout
@@ -36,6 +42,7 @@ packages/
   observability/Logs, traces, metrics, Langfuse, and cost measurements (later)
 docs/
   architecture.md
+  monitoring-phase-plan.md
 ```
 
 These `packages` are code boundaries, not independently deployed microservices. We will only give a
@@ -139,12 +146,52 @@ needed in this milestone.
 
 ## Current limitations
 
-- The first schema contains only authentication and organization models. Incident models arrive in
-  their relevant milestone so we can explain and test them carefully.
+- Engineers, applications, environments, and hosts support creating, editing, and deleting. Linked
+  records cannot be deleted until their service deployments or host links are removed. Deleting a
+  host removes all of its service deployments and assignments. Rotating on-call schedules,
+  repository mappings, and notification destinations will be added in later milestones.
+- A resource identifier is unique within its organization and monitoring source. Monitoring
+  integrations will add an integration-specific identity boundary later.
 - Google login requires real OAuth credentials and a running PostgreSQL database.
 - The local Compose file starts only PostgreSQL today. Redis, RabbitMQ, Prometheus, and Grafana will
   be added when the application actually uses them.
 - Auth.js v5 is currently installed from its beta release line because it provides the modern
   Next.js App Router API. We keep its usage behind `src/auth.ts` so an upgrade is localized.
 
-See [docs/architecture.md](docs/architecture.md) for the architecture and flow.
+See [docs/architecture.md](docs/architecture.md) for the architecture and flow. The guided monitoring
+order is in [docs/monitoring-phase-plan.md](docs/monitoring-phase-plan.md).
+
+## Test organization setup
+
+1. Sign in and open **Manage organization setup** on the dashboard.
+2. Add two engineers with valid email addresses. Select their countries and enter their local numbers.
+3. Add `payment-service`, `auth-service`, and `production`.
+4. Add one CloudWatch host with identifier `i-111`.
+5. Attach both services to the same host and choose contacts for each service.
+6. Confirm the host card shows both services and the dashboard reports one host and two deployments.
+7. Try attaching the same service and environment to the same host twice. It should reject the duplicate.
+8. Try choosing the same engineer for both roles. It should reject the assignment.
+9. Edit an engineer, service, environment, or host and confirm the displayed values update.
+10. Delete one service deployment and confirm the host and its other service remain.
+11. Cancel a host deletion and confirm nothing changes. Then delete an unused record.
+
+`libphonenumber-js` supplies the country calling-code list and validates local numbers. The selected
+country and normalized international number are saved together. This avoids maintaining our own
+numbering rules. Older contacts infer their country from the saved number when opened for editing.
+
+Database integration tests use `DATABASE_URL` and roll back their fixtures. Run them against a local
+test database with the migrations applied:
+
+```powershell
+$env:DATABASE_URL='postgresql://wakeops:wakeops@localhost:5433/wakeops?schema=public'
+npm run test:integration
+```
+
+Local PostgreSQL can use another port when 5432 is occupied:
+
+```powershell
+$env:POSTGRES_PORT='5433'
+docker compose up -d --wait postgres
+```
+
+No new provider secrets are required for milestone 2.
