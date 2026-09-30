@@ -12,6 +12,8 @@ export const logger = pino({
     paths: [
       'req.headers.authorization',
       'req.headers.cookie',
+      'req.headers.x-twilio-signature',
+      'req.query.token',
       '*.accessToken',
       '*.refreshToken',
       '*.phoneNumber',

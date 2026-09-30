@@ -3,6 +3,7 @@ import {
   defineQuery,
   defineSignal,
   proxyActivities,
+  patched,
   setHandler,
 } from '@temporalio/workflow';
 
@@ -40,6 +41,7 @@ export async function incidentWorkflow(
     incidentId: input.incidentId,
     phase: 'STARTING',
     acknowledgement: null,
+    callAttemptId: null,
   };
   let pendingAcknowledgement: IncidentAcknowledgement | null = null;
   let pendingResolution: IncidentResolution | null = null;
@@ -58,6 +60,14 @@ export async function incidentWorkflow(
     acknowledged: initialized.status === 'ACKNOWLEDGED',
     resolved: initialized.status === 'RESOLVED',
   });
+
+  if (patched('primary-call-v1') && state.phase === 'WAITING_FOR_ACKNOWLEDGEMENT') {
+    const call = await activities.initiatePrimaryCall(input.incidentId);
+    state = transitionIncidentWorkflow(state, {
+      type: 'CALL_REQUESTED',
+      callAttemptId: call.callAttemptId,
+    });
+  }
 
   while (state.phase !== 'RESOLVED') {
     await condition(() => pendingAcknowledgement !== null || pendingResolution !== null);

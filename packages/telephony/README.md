@@ -1,3 +1,4 @@
 # Telephony
 
-Future Twilio provider boundary, outbound calls, and idempotent callbacks.
+Provider boundary for outbound calls, Twilio webhook validation, call status normalization, and
+deterministic TwiML responses.

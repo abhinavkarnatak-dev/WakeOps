@@ -7,6 +7,7 @@ const startingState: IncidentWorkflowState = {
   incidentId: 'incident-1',
   phase: 'STARTING',
   acknowledgement: null,
+  callAttemptId: null,
 };
 
 describe('incident workflow transitions', () => {
@@ -33,6 +34,14 @@ describe('incident workflow transitions', () => {
     expect(acknowledged.phase).toBe('ACKNOWLEDGED');
     expect(resolved.phase).toBe('RESOLVED');
     expect(resolved.acknowledgement).toEqual(acknowledgement);
+  });
+
+  it('remembers the active call attempt', () => {
+    const state = transitionIncidentWorkflow(startingState, {
+      type: 'CALL_REQUESTED',
+      callAttemptId: 'call-1',
+    });
+    expect(state.callAttemptId).toBe('call-1');
   });
 
   it('does not reopen a resolved workflow', () => {

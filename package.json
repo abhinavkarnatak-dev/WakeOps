@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev": "concurrently -n web,api,worker -c cyan,green,magenta \"npm run dev -w @wakeops/web\" \"npm run dev -w @wakeops/api\" \"npm run dev -w @wakeops/workers\"",
-    "build": "npm run db:generate && npm run build -w @wakeops/shared && npm run build -w @wakeops/database && npm run build -w @wakeops/alerts && npm run build -w @wakeops/integrations && npm run build -w @wakeops/incidents && npm run build -w @wakeops/workflows && npm run build -w @wakeops/api && npm run build -w @wakeops/workers && npm run build -w @wakeops/web",
+    "build": "npm run db:generate && npm run build -w @wakeops/shared && npm run build -w @wakeops/database && npm run build -w @wakeops/alerts && npm run build -w @wakeops/integrations && npm run build -w @wakeops/incidents && npm run build -w @wakeops/telephony && npm run build -w @wakeops/workflows && npm run build -w @wakeops/api && npm run build -w @wakeops/workers && npm run build -w @wakeops/web",
     "typecheck": "npm run db:generate && npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present && npm run test:actions",
     "test:integration": "vitest run packages/database/test",

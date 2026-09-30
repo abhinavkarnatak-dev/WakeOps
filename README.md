@@ -19,7 +19,7 @@ host can run many services, and contacts are assigned once for each deployed ser
 organization admins can save setup. Phone numbers are validated in
 international format and masked in the saved contact list. Engineers do not need product accounts.
 
-Voice, RabbitMQ, and AI provider code are not implemented yet.
+Realtime voice, RabbitMQ, and AI provider code are not implemented yet.
 
 Phase 3 added a safe Grafana connection test. Grafana can send its contact-point test
 notification to `POST /webhooks/grafana/:organizationId`. Each organization generates its own
@@ -37,6 +37,11 @@ and waits durably for acknowledgement or resolution. Acknowledgement does not re
 A resolved Grafana notification signals the workflow and completes it. Worker restarts do not lose
 workflow progress.
 
+Phase 6 adds the first Twilio voice path. New Temporal workflows create one durable primary-engineer
+call attempt, submit it through Twilio, play a deterministic incident message, validate Twilio
+webhook signatures, and record call status callbacks. Realtime AI conversation and escalation are
+still later phases.
+
 ## Repository layout
 
 ```text
@@ -51,7 +56,7 @@ packages/
   alerts/       Common alert model, normalization, fingerprints, and delivery keys
   incidents/    Resource mapping, dedupe, incident creation, resolution, and audit events
   workflows/    Deterministic Temporal workflows, signals, state, and Activity contracts
-  telephony/    Twilio calls and callback handling (later)
+  telephony/    Twilio calls, TwiML, webhook validation, and call status handling
   voice/        Twilio media, Deepgram, ElevenLabs, and turn control (later)
   agent/        LLM provider, read-only tools, and per-call session context (later)
   notifications/RabbitMQ events plus email and Slack delivery (later)
@@ -135,8 +140,8 @@ Manual onboarding test:
 
 ## Environment variables
 
-The complete planned list is in `.env.example`. PostgreSQL, Google/Auth.js, Grafana, and Temporal
-Cloud configuration are used by the implemented milestones.
+The complete planned list is in `.env.example`. PostgreSQL, Google/Auth.js, Grafana, Temporal Cloud,
+and Twilio configuration are used by the implemented milestones.
 
 - **Core:** `NODE_ENV`, `WEB_URL`, `API_URL`, `WEBHOOK_PUBLIC_BASE_URL`, `PORT`, `LOG_LEVEL`,
   `ENCRYPTION_KEY`
@@ -147,7 +152,7 @@ Cloud configuration are used by the implemented milestones.
 - **RabbitMQ:** `AMQP_URL`
 - **Redis:** `REDIS_URL`
 - **Twilio:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`,
-  `TWILIO_WEBHOOK_BASE_URL`
+  `TWILIO_WEBHOOK_BASE_URL`, `TWILIO_TRIAL_MODE`
 - **Deepgram:** `DEEPGRAM_API_KEY`
 - **ElevenLabs:** `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`
 - **Email:** `RESEND_API_KEY`, `EMAIL_FROM`
@@ -175,6 +180,8 @@ Cloud configuration are used by the implemented milestones.
   Next.js App Router API. We keep its usage behind `src/auth.ts` so an upgrade is localized.
 - Temporal acknowledgement signals can currently be sent by code, but the voice agent and dashboard
   acknowledgement buttons arrive in later phases.
+- The current Twilio call plays a fixed incident message and records call states. It does not yet
+  stream audio, understand speech, acknowledge through voice, retry no-answer calls, or escalate.
 
 See [docs/architecture.md](docs/architecture.md) for the architecture and flow. The guided monitoring
 order is in [docs/monitoring-phase-plan.md](docs/monitoring-phase-plan.md).
@@ -237,4 +244,17 @@ the API on the host computer. Grafana Cloud requires a publicly reachable HTTPS 
 6. Confirm Temporal marks the workflow completed and PostgreSQL marks the incident `RESOLVED`.
 
 The workflow Activity retry policy handles temporary technical failures such as a database timeout.
-No-answer call retries and engineer escalation are business rules and will be added with Twilio.
+No-answer call retries and engineer escalation are business rules for a later workflow phase.
+
+## Test the basic Twilio call
+
+1. Pause any repeating Grafana test rule before adding live Twilio credentials.
+2. Add the Twilio Account SID, Auth Token, Twilio phone number, and public HTTPS webhook base URL to
+   `.env.local`.
+3. Set `TWILIO_TRIAL_MODE=true` for the limited Voice trial, or leave it false for a full account.
+4. On a Twilio trial account, verify the engineer's destination number in Twilio first.
+5. Start WakeOps and trigger one controlled firing alert.
+6. Confirm PostgreSQL contains one `CallAttempt` with a Twilio Call SID.
+7. Answer the call and confirm the deterministic incident message is played.
+8. Confirm callbacks update the attempt. Trial mode provides fewer intermediate statuses.
+9. Resolve the alert after the call test.

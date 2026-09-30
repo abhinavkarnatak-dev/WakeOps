@@ -7,11 +7,14 @@ import { processAlerts } from '@wakeops/incidents';
 import { createGrafanaWebhookRouter } from './grafana-webhook.js';
 import { syncIncidentWorkflows } from './incident-workflow.js';
 import { logger } from './logger.js';
+import { twilioWebhookDependencies } from './twilio-calls.js';
+import { createTwilioWebhookRouter, type TwilioWebhookDependencies } from './twilio-webhook.js';
 
 type AppOptions = {
   authenticateGrafanaWebhook?: Parameters<typeof createGrafanaWebhookRouter>[0]['authenticate'];
   recordGrafanaTest?: Parameters<typeof createGrafanaWebhookRouter>[0]['recordTest'];
   processGrafanaAlerts?: Parameters<typeof createGrafanaWebhookRouter>[0]['processAlerts'];
+  twilioWebhooks?: TwilioWebhookDependencies;
 };
 
 async function authenticateGrafanaWebhook(organizationId: string, secret: string) {
@@ -75,7 +78,18 @@ export function createApp(options: AppOptions = {}) {
   const app = express();
 
   app.disable('x-powered-by');
-  app.use(pinoHttp({ logger }));
+  app.use(
+    pinoHttp({
+      logger,
+      serializers: {
+        req(request) {
+          request.url = request.url?.replace(/([?&]token=)[^&]+/, '$1[REDACTED]');
+          return request;
+        },
+      },
+    }),
+  );
+  app.use(express.urlencoded({ extended: false }));
   app.use(express.json({ limit: '1mb' }));
 
   app.use(
@@ -85,6 +99,11 @@ export function createApp(options: AppOptions = {}) {
       recordTest: options.recordGrafanaTest ?? recordGrafanaTest,
       processAlerts: options.processGrafanaAlerts ?? processGrafanaAlerts,
     }),
+  );
+
+  app.use(
+    '/webhooks/twilio',
+    createTwilioWebhookRouter(options.twilioWebhooks ?? twilioWebhookDependencies),
   );
 
   app.get('/health', (_request, response) => {

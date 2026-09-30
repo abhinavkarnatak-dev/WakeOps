@@ -11,7 +11,7 @@ flowchart LR
     I --> T[Temporal incident workflow]
     T --> W[Temporal worker Activities]
     W --> DB
-    T -. future .-> V[Twilio voice path]
+    T --> V[Twilio outbound call]
     T -. future .-> Q[RabbitMQ notification event]
     Q --> E[Email worker]
     Q --> S[Slack worker]
@@ -22,8 +22,8 @@ flowchart LR
     C --> EL[ElevenLabs TTS]
 ```
 
-The solid path through Temporal and PostgreSQL is implemented. The dotted Twilio and RabbitMQ paths
-are future phases.
+The solid path through Temporal, PostgreSQL, and the basic Twilio call is implemented. Realtime
+conversation is still future work. The dotted RabbitMQ path is a future phase.
 
 ## Organization ownership
 
@@ -108,13 +108,18 @@ in one understandable monorepo.
 The API uses `incident-{incidentId}` as the workflow ID. Starting the same incident again returns the
 existing workflow instead of creating another one. This protects us when Grafana retries a webhook.
 
-The workflow receives only the incident ID. A worker Activity loads the current PostgreSQL state and
-moves an open incident to `NOTIFYING`. The workflow then waits without consuming a busy thread.
-Acknowledgement changes the incident to `ACKNOWLEDGED`, but the workflow continues waiting because
-acknowledged and resolved mean different things. A resolution signal changes the incident to
-`RESOLVED` and completes the workflow.
+The workflow receives only the incident ID. A worker Activity loads the current PostgreSQL state,
+moves an open incident to `NOTIFYING`, and starts one idempotent primary-engineer call. The workflow
+then waits without consuming a busy thread. Acknowledgement changes the incident to `ACKNOWLEDGED`,
+but the workflow continues waiting because acknowledged and resolved mean different things. A
+resolution signal changes the incident to `RESOLVED` and completes the workflow.
 
-Temporal retries a failed Activity for temporary technical problems. Future no-answer retries are
+The call Activity first creates and claims a PostgreSQL `CallAttempt`, then submits the call to
+Twilio. A Temporal retry reuses that attempt instead of blindly creating another call. Twilio sends
+signed voice and status webhooks to the API. The API verifies each signature, returns deterministic
+TwiML for the first message, and stores forward-only call status changes.
+
+Temporal retries a failed Activity for temporary technical problems. No-answer retries are future
 business decisions implemented explicitly with workflow timers. These are separate mechanisms.
 
 ## ChatGPT plan connection boundary

@@ -24,6 +24,7 @@ export type IncidentWorkflowState = {
   incidentId: string;
   phase: IncidentWorkflowPhase;
   acknowledgement: IncidentAcknowledgement | null;
+  callAttemptId: string | null;
 };
 
 export type IncidentWorkflowResult = {
@@ -36,8 +37,14 @@ export type InitializeIncidentResult = {
   acknowledgedAt: string | null;
 };
 
+export type InitiatePrimaryCallResult = {
+  callAttemptId: string | null;
+  status: 'STARTED' | 'EXISTING' | 'SKIPPED' | 'FAILED' | 'SUBMISSION_UNKNOWN';
+};
+
 export type IncidentActivities = {
   initializeIncidentWorkflow(incidentId: string): Promise<InitializeIncidentResult>;
+  initiatePrimaryCall(incidentId: string): Promise<InitiatePrimaryCallResult>;
   acknowledgeIncident(incidentId: string, acknowledgement: IncidentAcknowledgement): Promise<void>;
   resolveIncident(incidentId: string, resolution: IncidentResolution): Promise<void>;
 };

@@ -138,6 +138,20 @@ enum AuditEventType {
   INCIDENT_CREATED
   ALERT_DEDUPLICATED
   INCIDENT_RESOLVED
+  CALL_REQUESTED
+  CALL_STATUS_UPDATED
+}
+
+enum CallAttemptStatus {
+  CREATED
+  QUEUED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NO_ANSWER
+  BUSY
+  CANCELED
 }
 
 model Engineer {
@@ -150,6 +164,7 @@ model Engineer {
   organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   primaryAssignments   OnCallAssignment[] @relation("PrimaryEngineer")
   secondaryAssignments OnCallAssignment[] @relation("SecondaryEngineer")
+  callAttempts         CallAttempt[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -259,12 +274,36 @@ model Incident {
   resource          MonitoredResource @relation(fields: [organizationId, resourceId], references: [organizationId, id], onDelete: Restrict)
   alertEvents       AlertEvent[]
   auditEvents       AuditEvent[]
+  callAttempts      CallAttempt[]
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
   @@unique([organizationId, activeFingerprint])
   @@index([organizationId, status, createdAt])
   @@index([organizationId, fingerprint, createdAt])
+}
+
+model CallAttempt {
+  id                    String            @id @default(cuid())
+  incidentId            String
+  engineerId            String
+  attemptNumber         Int
+  status                CallAttemptStatus @default(CREATED)
+  providerCallId        String?           @unique
+  submissionStartedAt   DateTime?
+  initiatedAt           DateTime?
+  answeredAt            DateTime?
+  completedAt           DateTime?
+  failureCode           String?
+  failureMessage        String?
+  incident              Incident          @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  engineer              Engineer          @relation(fields: [engineerId], references: [id], onDelete: Restrict)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@unique([incidentId, engineerId, attemptNumber])
+  @@index([incidentId, createdAt])
+  @@index([engineerId, createdAt])
 }
 
 model AlertEvent {

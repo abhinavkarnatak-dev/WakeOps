@@ -17,6 +17,7 @@
     "@wakeops/incidents": "*",
     "@wakeops/integrations": "*",
     "@wakeops/shared": "*",
+    "@wakeops/telephony": "*",
     "@wakeops/workflows": "*",
     "express": "5.2.1",
     "pino": "10.3.1",
