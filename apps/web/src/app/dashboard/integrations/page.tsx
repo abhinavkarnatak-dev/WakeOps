@@ -2,11 +2,15 @@ import { database } from '@wakeops/database';
 import Link from 'next/link';
 import { requireOrganization } from '@/lib/organization';
 import { GrafanaConnection } from './grafana-connection';
-import { GrafanaTestStatus, type GrafanaPayloadPreview } from './grafana-test-status';
+import {
+  GrafanaTestStatus,
+  type GrafanaPayloadPreview,
+  type GrafanaProcessingResult,
+} from './grafana-test-status';
 
 export default async function IntegrationsPage() {
   const membership = await requireOrganization();
-  const [integration, receipt] = await Promise.all([
+  const [integration, receipt, processing, sampleMapping] = await Promise.all([
     database.grafanaIntegration.findUnique({
       where: { organizationId: membership.organizationId },
       select: { secretHint: true, lastVerifiedAt: true },
@@ -22,6 +26,40 @@ export default async function IntegrationsPage() {
         alertName: true,
         payloadPreview: true,
         receivedAt: true,
+      },
+    }),
+    database.alertEvent.findFirst({
+      where: { organizationId: membership.organizationId, source: 'GRAFANA' },
+      orderBy: { receivedAt: 'desc' },
+      select: {
+        id: true,
+        processingStatus: true,
+        mappingError: true,
+        alertName: true,
+        resourceIdentifier: true,
+        service: true,
+        environment: true,
+        severity: true,
+        receivedAt: true,
+        incident: {
+          select: {
+            id: true,
+            status: true,
+            metadata: true,
+            application: { select: { name: true } },
+            environment: { select: { name: true } },
+            resource: { select: { name: true, externalIdentifier: true } },
+          },
+        },
+      },
+    }),
+    database.resourceMapping.findFirst({
+      where: { organizationId: membership.organizationId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        resource: { select: { externalIdentifier: true } },
+        application: { select: { name: true } },
+        environment: { select: { name: true } },
       },
     }),
   ]);
@@ -69,6 +107,14 @@ export default async function IntegrationsPage() {
                   }
                 : null
             }
+            initialProcessing={
+              processing
+                ? ({
+                    ...processing,
+                    receivedAt: processing.receivedAt.toISOString(),
+                  } as GrafanaProcessingResult)
+                : null
+            }
           />
           <div className="rounded-lg border border-slate-700 p-4">
             <p className="font-semibold">Step 1 - Copy the reachable webhook URL</p>
@@ -105,15 +151,22 @@ export default async function IntegrationsPage() {
           <div className="rounded-lg border border-slate-700 p-4">
             <p className="font-semibold">Step 4 - Inspect labels with a custom test</p>
             <p className="mt-2 text-sm text-slate-400">
-              Open Grafana&apos;s Test dialog again, select Custom, and add these learning labels.
-              Send the test and inspect the received payload above.
+              Open Grafana&apos;s Test dialog again, select Custom, and use labels that exactly
+              match a saved WakeOps service deployment. A successful custom test creates or updates
+              an incident, but does not call anyone yet.
             </p>
+            {!sampleMapping && (
+              <p className="mt-3 rounded-md border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-200">
+                Add a host and service deployment in organization setup before running the mapping
+                test.
+              </p>
+            )}
             <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
               {[
                 ['alertname', 'WakeOpsLabelTest'],
-                ['service', 'payment-service'],
-                ['environment', 'production'],
-                ['instance', 'i-111'],
+                ['service', sampleMapping?.application.name ?? 'your-service-name'],
+                ['environment', sampleMapping?.environment.name ?? 'your-environment-name'],
+                ['instance', sampleMapping?.resource.externalIdentifier ?? 'your-host-identifier'],
                 ['severity', 'critical'],
               ].map(([key, value]) => (
                 <div key={key} className="rounded-md bg-slate-950 p-3">
@@ -160,8 +213,9 @@ export default async function IntegrationsPage() {
             </dl>
           </div>
           <p className="text-sm text-slate-400">
-            This test only records a safe receipt. It does not create an incident or contact an
-            engineer.
+            The predefined test proves connectivity and may not contain enough labels to map. A
+            correctly labeled custom test creates an incident. Temporal, phone calls, email and
+            Slack are not connected yet.
           </p>
         </div>
       </section>

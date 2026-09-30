@@ -1,10 +1,7 @@
 'use client';
 
 import { useActionState, useId, useRef, useState } from 'react';
-import {
-  manageGrafanaConnection,
-  type GrafanaConnectionState,
-} from './actions';
+import { manageGrafanaConnection, type GrafanaConnectionState } from './actions';
 
 type Props = {
   configured: boolean;

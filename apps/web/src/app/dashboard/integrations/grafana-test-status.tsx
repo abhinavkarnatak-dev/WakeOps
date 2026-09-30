@@ -27,6 +27,26 @@ export type GrafanaReceipt = {
   receivedAt: string;
 };
 
+export type GrafanaProcessingResult = {
+  id: string;
+  processingStatus: 'PROCESSED' | 'DEDUPLICATED' | 'MAPPING_FAILED' | 'UNMATCHED_RESOLUTION';
+  mappingError: string | null;
+  alertName: string | null;
+  resourceIdentifier: string | null;
+  service: string | null;
+  environment: string | null;
+  severity: string | null;
+  receivedAt: string;
+  incident: {
+    id: string;
+    status: string;
+    metadata: unknown;
+    application: { name: string };
+    environment: { name: string };
+    resource: { name: string; externalIdentifier: string };
+  } | null;
+};
+
 function Values({ title, values }: { title: string; values: Record<string, string> }) {
   const entries = Object.entries(values);
   return (
@@ -48,8 +68,81 @@ function Values({ title, values }: { title: string; values: Record<string, strin
   );
 }
 
-export function GrafanaTestStatus({ initialReceipt }: { initialReceipt: GrafanaReceipt | null }) {
+function incidentReference(id: string) {
+  return `INC-${id.slice(-8).toUpperCase()}`;
+}
+
+function ProcessingResult({ result }: { result: GrafanaProcessingResult }) {
+  const failed =
+    result.processingStatus === 'MAPPING_FAILED' ||
+    result.processingStatus === 'UNMATCHED_RESOLUTION';
+  const metadata =
+    result.incident?.metadata && typeof result.incident.metadata === 'object'
+      ? (result.incident.metadata as Record<string, unknown>)
+      : {};
+
+  return (
+    <div
+      className={`rounded-lg border p-4 ${
+        failed ? 'border-amber-700 bg-amber-950/30' : 'border-emerald-700 bg-emerald-950/30'
+      }`}
+    >
+      <p className={`font-semibold ${failed ? 'text-amber-200' : 'text-emerald-300'}`}>
+        {failed ? 'Alert mapping needs attention' : 'Alert mapped successfully'}
+      </p>
+      {failed ? (
+        <p className="mt-2 text-sm text-slate-300">{result.mappingError}</p>
+      ) : (
+        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-slate-500">Incident</dt>
+            <dd>{result.incident ? incidentReference(result.incident.id) : 'Existing incident'}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Status</dt>
+            <dd>{result.incident?.status ?? result.processingStatus}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Host</dt>
+            <dd>
+              {result.incident
+                ? `${result.incident.resource.name} (${result.incident.resource.externalIdentifier})`
+                : result.resourceIdentifier}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Service and environment</dt>
+            <dd>
+              {result.incident?.application.name ?? result.service} -{' '}
+              {result.incident?.environment.name ?? result.environment}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Primary engineer</dt>
+            <dd>{String(metadata.primaryEngineerName ?? 'Assigned')}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Processing</dt>
+            <dd>{result.processingStatus}</dd>
+          </div>
+        </dl>
+      )}
+      <p className="mt-3 text-xs text-slate-500">
+        Processed {new Date(result.receivedAt).toLocaleString()}
+      </p>
+    </div>
+  );
+}
+
+export function GrafanaTestStatus({
+  initialReceipt,
+  initialProcessing,
+}: {
+  initialReceipt: GrafanaReceipt | null;
+  initialProcessing: GrafanaProcessingResult | null;
+}) {
   const [receipt, setReceipt] = useState(initialReceipt);
+  const [processing, setProcessing] = useState(initialProcessing);
   const receiptId = useRef(initialReceipt?.id);
   const router = useRouter();
 
@@ -57,10 +150,14 @@ export function GrafanaTestStatus({ initialReceipt }: { initialReceipt: GrafanaR
     const timer = window.setInterval(async () => {
       const response = await fetch('/api/integrations/grafana/status', { cache: 'no-store' });
       if (!response.ok) return;
-      const data = (await response.json()) as { receipt: GrafanaReceipt | null };
+      const data = (await response.json()) as {
+        receipt: GrafanaReceipt | null;
+        processing: GrafanaProcessingResult | null;
+      };
       const changed = Boolean(data.receipt?.id && data.receipt.id !== receiptId.current);
       receiptId.current = data.receipt?.id;
       setReceipt(data.receipt);
+      setProcessing(data.processing);
       if (changed) router.refresh();
     }, 2000);
     return () => window.clearInterval(timer);
@@ -86,6 +183,7 @@ export function GrafanaTestStatus({ initialReceipt }: { initialReceipt: GrafanaR
           Received {new Date(receipt.receivedAt).toLocaleString()}
         </p>
       </div>
+      {processing && <ProcessingResult result={processing} />}
       {receipt.payloadPreview && (
         <details open className="rounded-lg border border-slate-700 bg-slate-950/40 p-4">
           <summary className="cursor-pointer font-semibold">Inspect received payload</summary>

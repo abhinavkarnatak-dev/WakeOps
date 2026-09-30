@@ -30,22 +30,22 @@ test. WakeOps should show a green connection result.
 Use Grafana's custom test option to send the proposed labels. WakeOps shows an allowlisted preview of
 the labels and annotations it received. We verify the real field names before enforcing them.
 
-### 3. Normalize the alert
+### 3. Normalize the alert - complete
 
 Convert the Grafana payload into WakeOps' provider-neutral incident alert type. Validate important
 fields and give a clear error when required labels are absent.
 
-### 4. Map the alert
+### 4. Map the alert - complete
 
 Match `instance`, `service`, and `environment` to the host and service deployment configured in
 WakeOps. Unknown or ambiguous mappings must be visible and must never be guessed.
 
-### 5. Create one controlled alert rule
+### 5. Create one controlled alert rule - ready for manual test
 
 Create a safe Grafana test rule, attach the contact point, and watch it move from normal to firing.
 Confirm that WakeOps receives both firing and resolved notifications.
 
-### 6. Add dedupe and incident creation
+### 6. Add dedupe and incident creation - complete
 
 Calculate a stable fingerprint, store every alert event, and create only one active incident for
 duplicate deliveries of the same problem.

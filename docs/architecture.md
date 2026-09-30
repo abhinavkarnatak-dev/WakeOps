@@ -6,8 +6,9 @@
 flowchart LR
     M[Grafana Alerting] --> API[Express API]
     API --> A[Normalize and map alert]
-    A --> DB[(PostgreSQL)]
-    A --> T[Temporal workflow]
+    A --> I[Deduplicate and create incident]
+    I --> DB[(PostgreSQL)]
+    I -. future .-> T[Temporal workflow]
     T --> V[Twilio voice path]
     T --> Q[RabbitMQ notification event]
     Q --> E[Email worker]
@@ -19,7 +20,8 @@ flowchart LR
     C --> EL[ElevenLabs TTS]
 ```
 
-Dashed/future components are described here but are not implemented in milestone 1.
+The solid Grafana-to-PostgreSQL path is implemented. Components after the dotted Temporal edge are
+future phases.
 
 ## Organization ownership
 
@@ -41,28 +43,39 @@ flowchart TD
 One host can have many service deployments. For example, EC2 instance `i-111` can run both
 `payment-service` and `auth-service` in production. Each service deployment has one contact
 assignment. WakeOps will not guess a service when an alert only identifies a shared host. That alert
-will remain unmapped until we introduce an explicit host-only routing policy.
+remains unmapped unless an explicit host-only routing policy is added later.
 
 Database relations include the organization ID so another organization's records cannot be linked
 accidentally. Creating a service deployment and its assignment uses one transaction. This means both
-changes succeed together, or neither is saved. Scheduling and monitoring connection identities will
-be added later.
+changes succeed together, or neither is saved. Monitoring connection identities are isolated per
+organization. Scheduling will be added later.
+
+## Alert identity
+
+The incident fingerprint identifies one ongoing problem. It uses the organization, alert name,
+host, service, environment and other stable identity labels. Changing a metric value or severity
+does not create another active incident.
+
+The alert event key identifies one exact delivery. It also includes status, occurrence time, value,
+severity, labels and annotations. An identical webhook retry is ignored, while changed information
+is stored as another event on the same incident.
 
 ## Module responsibilities
 
 - `database`: the one PostgreSQL schema and client. It stores durable product facts.
 - `integrations`: Grafana webhook parsing plus future GitHub and Slack connection code. It prevents
   external provider formats from leaking into incident business rules.
-- `alerts`: turns provider payloads into one alert type, maps resources, and calculates a stable
-  fingerprint so duplicate webhooks do not create duplicate incidents.
-- `incidents`: creates incidents and records status/timeline changes.
+- `alerts`: defines the provider-neutral alert type and calculates stable incident fingerprints and
+  exact delivery keys.
+- `incidents`: maps resources, deduplicates deliveries, creates or resolves incidents, and records
+  the durable audit timeline.
 - `workflows`: Temporal workflow decisions and the Activities that perform outside work. Workflow
   code decides what should happen; Activities call databases and providers.
 - `telephony`: starts Twilio calls and idempotently handles status callbacks.
-- `voice`: moves μ-law audio between Twilio, Deepgram, and ElevenLabs and owns listening/speaking/
-  interruption state.
+- `voice`: moves mu-law audio between Twilio, Deepgram, and ElevenLabs and owns listening, speaking
+  and interruption state.
 - `agent`: gives the model compact incident context and a strict allowlist of read-only tools plus
-  acknowledgement/note actions.
+  acknowledgement and note actions.
 - `notifications`: publishes one notification event and lets email and Slack consumers deliver it
   independently.
 - `observability`: structured logs, OpenTelemetry traces, Prometheus metrics, Langfuse AI traces,
@@ -77,7 +90,7 @@ acknowledgement and transcript metadata belong in PostgreSQL. Fast in-process st
 the live stream, but must not be the only copy of an important business fact.
 
 We are intentionally not adding cross-incident, long-term AI memory. The agent will not infer habits
-such as “this engineer usually handles payments” or retrieve old incidents as personal memory. That
+such as "this engineer usually handles payments" or retrieve old incidents as personal memory. That
 avoids stale conclusions, privacy risk, and an unnecessary retrieval system.
 
 ## Why API and workers are separate processes

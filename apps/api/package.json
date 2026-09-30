@@ -11,7 +11,9 @@
     "test": "vitest run src"
   },
   "dependencies": {
+    "@wakeops/alerts": "*",
     "@wakeops/database": "*",
+    "@wakeops/incidents": "*",
     "@wakeops/integrations": "*",
     "@wakeops/shared": "*",
     "express": "5.2.1",

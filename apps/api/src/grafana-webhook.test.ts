@@ -2,11 +2,23 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from './app.js';
 
 const secret = 'grafana-test-secret-with-at-least-32-characters';
-const authenticateGrafanaWebhook = vi.fn(async (_organizationId: string, provided: string) =>
-  provided === secret,
+const authenticateGrafanaWebhook = vi.fn(
+  async (_organizationId: string, provided: string) => provided === secret,
 );
 const recordGrafanaTest = vi.fn(async () => true);
-const server = createApp({ authenticateGrafanaWebhook, recordGrafanaTest }).listen(0);
+const processGrafanaAlerts = vi.fn(async () => [
+  {
+    outcome: 'INCIDENT_CREATED' as const,
+    eventId: 'event-1',
+    incidentId: 'incident-1',
+    message: 'Created.',
+  },
+]);
+const server = createApp({
+  authenticateGrafanaWebhook,
+  recordGrafanaTest,
+  processGrafanaAlerts,
+}).listen(0);
 
 beforeAll(async () => {
   await new Promise<void>((resolve) => {
@@ -53,6 +65,7 @@ describe('Grafana webhook', () => {
         alertName: 'TestAlert',
       }),
     );
+    expect(processGrafanaAlerts).toHaveBeenCalledWith('org-1', payload);
   });
 
   it('rejects a missing secret', async () => {

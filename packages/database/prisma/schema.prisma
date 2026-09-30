@@ -72,6 +72,8 @@ model Organization {
   resources          MonitoredResource[]
   grafanaIntegration GrafanaIntegration?
   webhookTests       MonitoringWebhookTest[]
+  incidents          Incident[]
+  alertEvents        AlertEvent[]
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 }
@@ -106,6 +108,38 @@ enum MonitoringSource {
   GRAFANA
 }
 
+enum AlertSeverity {
+  CRITICAL
+  WARNING
+  INFO
+}
+
+enum AlertLifecycleStatus {
+  FIRING
+  RESOLVED
+}
+
+enum AlertProcessingStatus {
+  PROCESSED
+  DEDUPLICATED
+  MAPPING_FAILED
+  UNMATCHED_RESOLUTION
+}
+
+enum IncidentStatus {
+  OPEN
+  NOTIFYING
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum AuditEventType {
+  ALERT_RECEIVED
+  INCIDENT_CREATED
+  ALERT_DEDUPLICATED
+  INCIDENT_RESOLVED
+}
+
 model Engineer {
   id                   String             @id @default(cuid())
   organizationId       String
@@ -129,6 +163,7 @@ model Application {
   name           String
   organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   mappings       ResourceMapping[]
+  incidents      Incident[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -142,6 +177,7 @@ model Environment {
   name           String
   organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   mappings       ResourceMapping[]
+  incidents      Incident[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -157,6 +193,7 @@ model MonitoredResource {
   name               String
   organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   mappings           ResourceMapping[]
+  incidents          Incident[]
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -194,6 +231,81 @@ model OnCallAssignment {
   updatedAt           DateTime        @updatedAt
 
   @@unique([organizationId, mappingId])
+}
+
+model Incident {
+  id                String            @id @default(cuid())
+  organizationId    String
+  applicationId     String
+  environmentId     String
+  resourceId        String
+  source            MonitoringSource
+  fingerprint       String
+  activeFingerprint String?
+  alertName         String
+  severity          AlertSeverity
+  value             String?
+  status            IncidentStatus    @default(OPEN)
+  labels            Json
+  annotations       Json
+  metadata          Json
+  startedAt         DateTime
+  lastSeenAt        DateTime
+  acknowledgedAt    DateTime?
+  resolvedAt        DateTime?
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  application       Application       @relation(fields: [organizationId, applicationId], references: [organizationId, id], onDelete: Restrict)
+  environment       Environment       @relation(fields: [organizationId, environmentId], references: [organizationId, id], onDelete: Restrict)
+  resource          MonitoredResource @relation(fields: [organizationId, resourceId], references: [organizationId, id], onDelete: Restrict)
+  alertEvents       AlertEvent[]
+  auditEvents       AuditEvent[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([organizationId, activeFingerprint])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, fingerprint, createdAt])
+}
+
+model AlertEvent {
+  id                 String                @id @default(cuid())
+  organizationId     String
+  incidentId         String?
+  source             MonitoringSource
+  eventKey           String
+  externalEventId    String?
+  lifecycleStatus    AlertLifecycleStatus
+  processingStatus   AlertProcessingStatus
+  mappingError       String?
+  alertName          String?
+  resourceIdentifier String?
+  service            String?
+  environment        String?
+  severity           String?
+  value              String?
+  labels             Json
+  annotations        Json
+  metadata           Json
+  startedAt          DateTime
+  endedAt            DateTime?
+  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  incident           Incident?             @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  receivedAt         DateTime              @default(now())
+
+  @@unique([organizationId, eventKey])
+  @@index([organizationId, receivedAt])
+  @@index([incidentId, receivedAt])
+}
+
+model AuditEvent {
+  id         String         @id @default(cuid())
+  incidentId String
+  type       AuditEventType
+  details    Json?
+  incident   Incident       @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  occurredAt DateTime       @default(now())
+
+  @@index([incidentId, occurredAt])
 }
 
 model Membership {

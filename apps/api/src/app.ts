@@ -1,7 +1,8 @@
 import express from 'express';
 import { pinoHttp } from 'pino-http';
 import { database } from '@wakeops/database';
-import { matchesGrafanaWebhookSecret } from '@wakeops/integrations';
+import { matchesGrafanaWebhookSecret, normalizeGrafanaWebhook } from '@wakeops/integrations';
+import { processAlerts } from '@wakeops/incidents';
 
 import { createGrafanaWebhookRouter } from './grafana-webhook.js';
 import { logger } from './logger.js';
@@ -9,6 +10,7 @@ import { logger } from './logger.js';
 type AppOptions = {
   authenticateGrafanaWebhook?: Parameters<typeof createGrafanaWebhookRouter>[0]['authenticate'];
   recordGrafanaTest?: Parameters<typeof createGrafanaWebhookRouter>[0]['recordTest'];
+  processGrafanaAlerts?: Parameters<typeof createGrafanaWebhookRouter>[0]['processAlerts'];
 };
 
 async function authenticateGrafanaWebhook(organizationId: string, secret: string) {
@@ -16,9 +18,7 @@ async function authenticateGrafanaWebhook(organizationId: string, secret: string
     where: { organizationId },
     select: { secretHash: true },
   });
-  return integration
-    ? matchesGrafanaWebhookSecret(secret, integration.secretHash)
-    : false;
+  return integration ? matchesGrafanaWebhookSecret(secret, integration.secretHash) : false;
 }
 
 async function recordGrafanaTest(
@@ -63,6 +63,10 @@ async function recordGrafanaTest(
   return true;
 }
 
+async function processGrafanaAlerts(organizationId: string, payload: unknown) {
+  return processAlerts(database, normalizeGrafanaWebhook(payload, organizationId));
+}
+
 export function createApp(options: AppOptions = {}) {
   const app = express();
 
@@ -75,6 +79,7 @@ export function createApp(options: AppOptions = {}) {
     createGrafanaWebhookRouter({
       authenticate: options.authenticateGrafanaWebhook ?? authenticateGrafanaWebhook,
       recordTest: options.recordGrafanaTest ?? recordGrafanaTest,
+      processAlerts: options.processGrafanaAlerts ?? processGrafanaAlerts,
     }),
   );
 

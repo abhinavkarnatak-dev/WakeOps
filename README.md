@@ -19,13 +19,17 @@ host can run many services, and contacts are assigned once for each deployed ser
 organization admins can save setup. Phone numbers are validated in
 international format and masked in the saved contact list. Engineers do not need product accounts.
 
-No production incident creation, voice, Temporal, RabbitMQ, or AI provider code is implemented yet.
+Voice, Temporal, RabbitMQ, and AI provider code are not implemented yet.
 
-Phase 3 has started with a safe Grafana connection test. Grafana can send its contact-point test
+Phase 3 added a safe Grafana connection test. Grafana can send its contact-point test
 notification to `POST /webhooks/grafana/:organizationId`. Each organization generates its own
 Bearer secret. WakeOps stores only the secret hash, validates the JSON, stores a small test receipt,
-and shows the result at `/dashboard/integrations`. This checkpoint does not create an incident or
-contact an engineer.
+and shows the result at `/dashboard/integrations`.
+
+Phase 4 normalizes Grafana alerts, maps their host, service and environment, finds the assigned
+engineers, calculates stable fingerprints, stores every meaningful alert event, and creates or
+updates one active incident. Exact repeated deliveries are ignored safely. Resolved notifications
+close the matching active incident, while a later recurrence can create a new incident.
 
 ## Repository layout
 
@@ -37,9 +41,9 @@ apps/
 packages/
   database/     Prisma schema and shared PostgreSQL client
   shared/       Small provider-neutral types and validation helpers
-  integrations/ Monitoring/GitHub/Slack connection adapters (later)
-  alerts/       Common alert model, normalization, fingerprinting, and dedupe (later)
-  incidents/    Incident creation, state changes, and timeline (later)
+  integrations/ Grafana parsing plus future GitHub and Slack connection adapters
+  alerts/       Common alert model, normalization, fingerprints, and delivery keys
+  incidents/    Resource mapping, dedupe, incident creation, resolution, and audit events
   workflows/    Deterministic Temporal workflow definitions and activities (later)
   telephony/    Twilio calls and callback handling (later)
   voice/        Twilio media, Deepgram, ElevenLabs, and turn control (later)

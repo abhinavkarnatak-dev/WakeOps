@@ -1,22 +1,17 @@
 {
-  "name": "@wakeops/integrations",
+  "name": "@wakeops/alerts",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./grafana-secret": "./src/grafana-secret.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run src"
-  },
-  "dependencies": {
-    "@wakeops/alerts": "*",
-    "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/node": "24.10.1",

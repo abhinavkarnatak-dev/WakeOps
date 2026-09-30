@@ -13,20 +13,50 @@ export async function GET() {
   });
   if (!membership) return NextResponse.json({ error: 'Organization not found.' }, { status: 404 });
 
-  const receipt = await database.monitoringWebhookTest.findFirst({
-    where: { organizationId: membership.organizationId, source: 'GRAFANA' },
-    orderBy: { receivedAt: 'desc' },
-    select: {
-      id: true,
-      receiver: true,
-      status: true,
-      alertCount: true,
-      alertName: true,
-      payloadPreview: true,
-      receivedAt: true,
-    },
-  });
+  const [receipt, processing] = await Promise.all([
+    database.monitoringWebhookTest.findFirst({
+      where: { organizationId: membership.organizationId, source: 'GRAFANA' },
+      orderBy: { receivedAt: 'desc' },
+      select: {
+        id: true,
+        receiver: true,
+        status: true,
+        alertCount: true,
+        alertName: true,
+        payloadPreview: true,
+        receivedAt: true,
+      },
+    }),
+    database.alertEvent.findFirst({
+      where: { organizationId: membership.organizationId, source: 'GRAFANA' },
+      orderBy: { receivedAt: 'desc' },
+      select: {
+        id: true,
+        processingStatus: true,
+        mappingError: true,
+        alertName: true,
+        resourceIdentifier: true,
+        service: true,
+        environment: true,
+        severity: true,
+        receivedAt: true,
+        incident: {
+          select: {
+            id: true,
+            status: true,
+            metadata: true,
+            application: { select: { name: true } },
+            environment: { select: { name: true } },
+            resource: { select: { name: true, externalIdentifier: true } },
+          },
+        },
+      },
+    }),
+  ]);
   return NextResponse.json({
     receipt: receipt ? { ...receipt, receivedAt: receipt.receivedAt.toISOString() } : null,
+    processing: processing
+      ? { ...processing, receivedAt: processing.receivedAt.toISOString() }
+      : null,
   });
 }
