@@ -10,6 +10,11 @@ import {
 import { z } from 'zod';
 
 import type { TwilioWebhookDependencies } from './twilio-webhook.js';
+import {
+  signalIncidentAcknowledgement,
+  signalIncidentCallResult,
+} from './incident-workflow.js';
+import { logger } from './logger.js';
 
 const twilioWebhookConfigSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().min(1),
@@ -35,23 +40,41 @@ function incidentMessage(incident: {
   value: string | null;
   application: { name: string };
   environment: { name: string };
+  resource: { externalIdentifier: string };
+  annotations: unknown;
 }) {
-  const value = incident.value ? ` The reported value is ${incident.value}.` : '';
-  return `${incident.severity.toLowerCase()} incident detected for ${incident.application.name} in ${incident.environment.name}. Alert ${incident.alertName}.${value} Please check the WakeOps dashboard.`;
+  const severity = incident.severity.toLowerCase();
+  const urgency = severity === 'critical' ? 'requires immediate attention' : 'requires attention';
+  const value = incident.value ? ` Current reported value: ${incident.value}.` : '';
+  const annotations =
+    incident.annotations &&
+    typeof incident.annotations === 'object' &&
+    !Array.isArray(incident.annotations)
+      ? (incident.annotations as Record<string, unknown>)
+      : null;
+  const summaryValue = annotations?.summary;
+  const summary =
+    typeof summaryValue === 'string' && summaryValue.trim()
+      ? ` Summary: ${summaryValue.trim().slice(0, 500)}.`
+      : '';
+  return `WakeOps ${severity} incident. ${incident.application.name} in ${incident.environment.name} ${urgency}. Resource: ${incident.resource.externalIdentifier}. Alert: ${incident.alertName}.${value}${summary} Please investigate the affected service and check the WakeOps dashboard.`;
 }
 
 async function voiceMessage(callAttemptId: string, providerCallId: string) {
-  return database.$transaction(async (tx) => {
+  const result = await database.$transaction(async (tx) => {
     const attempt = await tx.callAttempt.findUnique({
       where: { id: callAttemptId },
       include: {
+        engineer: { select: { name: true } },
         incident: {
           select: {
             alertName: true,
             severity: true,
             value: true,
+            annotations: true,
             application: { select: { name: true } },
             environment: { select: { name: true } },
+            resource: { select: { externalIdentifier: true } },
           },
         },
       },
@@ -67,38 +90,69 @@ async function voiceMessage(callAttemptId: string, providerCallId: string) {
         answeredAt: attempt.answeredAt ?? new Date(),
       },
     });
-    return incidentMessage(attempt.incident);
+    return {
+      message: incidentMessage(attempt.incident),
+      incidentId: attempt.incidentId,
+      engineerName: attempt.engineer.name,
+      answeredAt: attempt.answeredAt ?? new Date(),
+    };
   });
+  if (!result) return null;
+  await signalIncidentAcknowledgement(result.incidentId, {
+    acknowledgedBy: result.engineerName,
+    channel: 'VOICE',
+    acknowledgedAt: result.answeredAt.toISOString(),
+  }).catch((error: unknown) => {
+    logger.error(
+      { error, incidentId: result.incidentId, callAttemptId },
+      'Could not signal voice acknowledgement',
+    );
+  });
+  return result.message;
 }
 
 async function recordStatus(callAttemptId: string, providerCallId: string, providerStatus: string) {
-  return database.$transaction(async (tx) => {
+  const result = await database.$transaction(async (tx) => {
     const attempt = await tx.callAttempt.findUnique({ where: { id: callAttemptId } });
     if (!attempt || (attempt.providerCallId && attempt.providerCallId !== providerCallId))
-      return false;
+      return null;
     const incoming = normalizeTwilioCallStatus(providerStatus);
     const status = advanceCallStatus(attempt.status, incoming);
-    if (attempt.providerCallId === providerCallId && status === attempt.status) return true;
     const now = new Date();
-    await tx.callAttempt.update({
-      where: { id: attempt.id },
-      data: {
-        providerCallId,
-        status,
-        initiatedAt: attempt.initiatedAt ?? now,
-        answeredAt: status === 'IN_PROGRESS' ? (attempt.answeredAt ?? now) : attempt.answeredAt,
-        completedAt: isTerminalCallStatus(status) ? (attempt.completedAt ?? now) : null,
-      },
-    });
-    await tx.auditEvent.create({
-      data: {
-        incidentId: attempt.incidentId,
-        type: 'CALL_STATUS_UPDATED',
-        details: { callAttemptId: attempt.id, status },
-      },
-    });
-    return true;
+    const answeredAt = status === 'IN_PROGRESS' ? (attempt.answeredAt ?? now) : attempt.answeredAt;
+    const completedAt = isTerminalCallStatus(status) ? (attempt.completedAt ?? now) : null;
+    if (attempt.providerCallId !== providerCallId || status !== attempt.status) {
+      await tx.callAttempt.update({
+        where: { id: attempt.id },
+        data: {
+          providerCallId,
+          status,
+          initiatedAt: attempt.initiatedAt ?? now,
+          answeredAt,
+          completedAt,
+        },
+      });
+      await tx.auditEvent.create({
+        data: {
+          incidentId: attempt.incidentId,
+          type: 'CALL_STATUS_UPDATED',
+          details: { callAttemptId: attempt.id, status },
+        },
+      });
+    }
+    return { attempt, status, answeredAt, completedAt };
   });
+
+  if (!result) return false;
+  if (isTerminalCallStatus(result.status) && result.completedAt) {
+    await signalIncidentCallResult(result.attempt.incidentId, {
+      callAttemptId: result.attempt.id,
+      status: result.status,
+      answered: result.answeredAt !== null,
+      completedAt: result.completedAt.toISOString(),
+    });
+  }
+  return true;
 }
 
 export const twilioWebhookDependencies: TwilioWebhookDependencies = {

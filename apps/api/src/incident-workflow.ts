@@ -1,9 +1,14 @@
 import { WorkflowExecutionAlreadyStartedError, WorkflowNotFoundError } from '@temporalio/client';
 import type { AlertNormalizationResult } from '@wakeops/alerts';
+import { database } from '@wakeops/database';
 import type { AlertProcessingResult } from '@wakeops/incidents';
 import {
+  INCIDENT_ACKNOWLEDGED_SIGNAL,
+  INCIDENT_CALL_COMPLETED_SIGNAL,
   INCIDENT_RESOLVED_SIGNAL,
   INCIDENT_WORKFLOW_NAME,
+  type IncidentAcknowledgement,
+  type IncidentCallResult,
   incidentWorkflowId,
 } from '@wakeops/workflows/contracts';
 
@@ -57,6 +62,62 @@ async function resolveIncidentWorkflow(incidentId: string, resolvedAt: Date) {
   const description = await handle.describe();
   if (description.status.name === 'RUNNING') {
     await handle.signal(INCIDENT_RESOLVED_SIGNAL, { resolvedAt: resolvedAt.toISOString() });
+  }
+}
+
+export async function signalIncidentCallResult(incidentId: string, result: IncidentCallResult) {
+  const client = await getTemporalClient();
+  const handle = client.workflow.getHandle(incidentWorkflowId(incidentId));
+  const description = await handle.describe();
+  if (description.status.name === 'RUNNING') {
+    await handle.signal(INCIDENT_CALL_COMPLETED_SIGNAL, result);
+  }
+}
+
+export async function signalIncidentAcknowledgement(
+  incidentId: string,
+  acknowledgement: IncidentAcknowledgement,
+) {
+  const client = await getTemporalClient();
+  const handle = client.workflow.getHandle(incidentWorkflowId(incidentId));
+  const description = await handle.describe();
+  if (description.status.name === 'RUNNING') {
+    await handle.signal(INCIDENT_ACKNOWLEDGED_SIGNAL, acknowledgement);
+  }
+}
+
+export async function reconcileAcknowledgedIncidentWorkflows() {
+  const incidents = await database.incident.findMany({
+    where: { status: 'ACKNOWLEDGED', acknowledgedAt: { not: null } },
+    orderBy: { updatedAt: 'desc' },
+    take: 100,
+    select: {
+      id: true,
+      acknowledgedAt: true,
+      callAttempts: {
+        where: { status: 'COMPLETED', answeredAt: { not: null } },
+        orderBy: { completedAt: 'desc' },
+        take: 1,
+        select: { engineer: { select: { name: true } } },
+      },
+    },
+  });
+  const client = await getTemporalClient();
+
+  for (const incident of incidents) {
+    const handle = client.workflow.getHandle(incidentWorkflowId(incident.id));
+    try {
+      const description = await handle.describe();
+      if (description.status.name === 'RUNNING' && incident.acknowledgedAt) {
+        await handle.signal(INCIDENT_ACKNOWLEDGED_SIGNAL, {
+          acknowledgedBy: incident.callAttempts[0]?.engineer.name ?? 'Assigned engineer',
+          channel: 'VOICE',
+          acknowledgedAt: incident.acknowledgedAt.toISOString(),
+        });
+      }
+    } catch (error) {
+      if (!(error instanceof WorkflowNotFoundError)) throw error;
+    }
   }
 }
 

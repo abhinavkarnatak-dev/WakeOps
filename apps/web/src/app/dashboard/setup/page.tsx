@@ -1,13 +1,13 @@
 import { database } from '@wakeops/database';
 import { maskPhoneNumber } from '@wakeops/shared';
-import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { requireOrganization } from '@/lib/organization';
 import { SetupForm } from './setup-form';
 import { ContactFields } from './contact-fields';
 import { SavedRecord } from './saved-record';
 
-const fieldClass = 'w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2';
+const fieldClass =
+  'w-full rounded-xl border border-white/10 bg-[#101111] px-3 py-2 text-zinc-100 outline-none transition focus:border-lime-300';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -78,17 +78,19 @@ export default async function SetupPage() {
     applications.length > 0 &&
     environments.length > 0;
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
-      <Link href="/dashboard" className="text-sm text-cyan-300">
-        Back to dashboard
-      </Link>
-      <h1 className="mt-4 text-3xl font-bold">Organization setup</h1>
-      <p className="mt-2 text-slate-300">
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-10">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lime-300">
+        Organization
+      </p>
+      <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+        Services and on-call ownership
+      </h1>
+      <p className="mt-2 text-zinc-500">
         Add contacts and services, then tell WakeOps who owns each monitored resource.
       </p>
       {!admin && <p className="mt-4 text-amber-300">Only admins can change this setup.</p>}
       <section className="mt-8 grid gap-6 md:grid-cols-3">
-        <div className="rounded-xl border border-slate-700 p-5">
+        <div className="rounded-2xl border border-white/8 bg-[#0b0c0c] p-5">
           <h2 className="mb-4 text-xl font-semibold">1. Engineers</h2>
           <SetupForm kind="engineer" disabled={!admin}>
             <ContactFields />
@@ -103,7 +105,7 @@ export default async function SetupPage() {
                 value={
                   <>
                     <p className="font-semibold">{engineer.name}</p>
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400">
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500">
                       <span>{engineer.email}</span>
                       <span>{maskPhoneNumber(engineer.phoneNumber)}</span>
                     </div>
@@ -113,11 +115,11 @@ export default async function SetupPage() {
               />
             ))}
           </ul>
-          <p className="mt-4 text-sm text-slate-400">
+          <p className="mt-4 text-sm text-zinc-500">
             Contacts can receive calls without a WakeOps account.
           </p>
         </div>
-        <div className="rounded-xl border border-slate-700 p-5">
+        <div className="rounded-2xl border border-white/8 bg-[#0b0c0c] p-5">
           <h2 className="mb-4 text-xl font-semibold">2. Applications</h2>
           <SetupForm kind="application" disabled={!admin}>
             <Field label="Service name">
@@ -155,7 +157,7 @@ export default async function SetupPage() {
             ))}
           </ul>
         </div>
-        <div className="rounded-xl border border-slate-700 p-5">
+        <div className="rounded-2xl border border-white/8 bg-[#0b0c0c] p-5">
           <h2 className="mb-4 text-xl font-semibold">3. Environments</h2>
           <SetupForm kind="environment" disabled={!admin}>
             <Field label="Environment name">
@@ -194,7 +196,7 @@ export default async function SetupPage() {
           </ul>
         </div>
       </section>
-      <section className="mt-6 rounded-xl border border-slate-700 p-5">
+      <section className="mt-6 rounded-2xl border border-white/8 bg-[#0b0c0c] p-5">
         <h2 className="mb-4 text-xl font-semibold">4. Add a host</h2>
         <SetupForm kind="host" disabled={!canCreateHost}>
           <div className="grid gap-4 md:grid-cols-2">
@@ -219,12 +221,12 @@ export default async function SetupPage() {
             </Field>
           </div>
         </SetupForm>
-        <p className="mt-4 text-sm text-slate-400">
+        <p className="mt-4 text-sm text-zinc-500">
           A host can be an EC2 instance, virtual machine, or server. Use the exact identifier its
           monitoring alerts will send. Contacts are assigned when you attach a service below.
         </p>
       </section>
-      <section className="mt-6 rounded-xl border border-slate-700 p-5">
+      <section className="mt-6 rounded-2xl border border-white/8 bg-[#0b0c0c] p-5">
         <h2 className="mb-4 text-xl font-semibold">5. Attach a service to a host</h2>
         {!canDeploy && (
           <p className="mb-4 text-sm text-amber-300">
@@ -236,16 +238,16 @@ export default async function SetupPage() {
             <SelectField label="Host" name="resourceId" options={resources} />
             <SelectField label="Application" name="applicationId" options={applications} />
             <SelectField label="Environment" name="environmentId" options={environments} />
-            <SelectField label="Primary engineer" name="primaryEngineerId" options={engineers} />
+            <SelectField label="On-call engineer" name="primaryEngineerId" options={engineers} />
             <SelectField
-              label="Secondary engineer (optional)"
+              label="Senior engineer (optional)"
               name="secondaryEngineerId"
               options={engineers}
               optional
             />
           </div>
         </SetupForm>
-        <p className="mt-4 text-sm text-slate-400">
+        <p className="mt-4 text-sm text-zinc-500">
           Add one entry for every service running on the host. The service contacts are used when an
           alert identifies that service.
         </p>
@@ -253,13 +255,13 @@ export default async function SetupPage() {
       <section className="mt-8">
         <h2 className="mb-4 text-xl font-semibold">Hosts and deployed services</h2>
         {!resources.length ? (
-          <p className="text-slate-400">No hosts added yet.</p>
+          <p className="text-zinc-500">No hosts added yet.</p>
         ) : (
           <div className="space-y-5">
             {resources.map((resource) => (
               <article
                 key={resource.id}
-                className="rounded-xl border border-slate-700 bg-slate-900/40 p-5"
+                className="rounded-2xl border border-white/8 bg-[#0b0c0c] p-5"
               >
                 <ul>
                   <SavedRecord
@@ -269,7 +271,7 @@ export default async function SetupPage() {
                     value={
                       <>
                         <p className="text-lg font-semibold">{resource.name}</p>
-                        <p className="mt-1 text-slate-400">
+                        <p className="mt-1 text-zinc-500">
                           Grafana identifier: {resource.externalIdentifier}
                         </p>
                       </>
@@ -299,12 +301,12 @@ export default async function SetupPage() {
                     }
                   />
                 </ul>
-                <div className="mt-4 border-t border-slate-800 pt-4">
+                <div className="mt-4 border-t border-white/8 pt-4">
                   <h3 className="font-medium">Services on this host</h3>
                   {!resource.mappings.length ? (
-                    <p className="mt-2 text-sm text-slate-400">No services attached yet.</p>
+                    <p className="mt-2 text-sm text-zinc-500">No services attached yet.</p>
                   ) : (
-                    <ul className="mt-2 divide-y divide-slate-800">
+                    <ul className="mt-2 divide-y divide-white/6">
                       {resource.mappings.map((mapping) => (
                         <li
                           key={mapping.id}
@@ -314,9 +316,9 @@ export default async function SetupPage() {
                             <p className="font-medium">
                               {mapping.application.name} - {mapping.environment.name}
                             </p>
-                            <p className="mt-1 text-xs text-slate-400">
-                              {mapping.assignment?.primaryEngineer.name ?? 'Unassigned'} /{' '}
-                              {mapping.assignment?.secondaryEngineer?.name ?? 'No secondary'}
+                            <p className="mt-1 text-xs text-zinc-500">
+                              On-call: {mapping.assignment?.primaryEngineer.name ?? 'Unassigned'} / Senior:{' '}
+                              {mapping.assignment?.secondaryEngineer?.name ?? 'Unassigned'}
                             </p>
                           </div>
                           {admin && (
@@ -339,6 +341,6 @@ export default async function SetupPage() {
           </div>
         )}
       </section>
-    </main>
+    </div>
   );
 }

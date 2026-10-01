@@ -1,8 +1,7 @@
 'use server';
 
 import { database, MembershipRole, Prisma } from '@wakeops/database';
-import { organizationNameSchema, toOrganizationSlug } from '@wakeops/shared';
-import { randomBytes } from 'node:crypto';
+import { nextOrganizationSlug, organizationNameSchema, toOrganizationSlug } from '@wakeops/shared';
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/auth';
@@ -32,22 +31,44 @@ export async function createOrganization(
   const slugBase = toOrganizationSlug(result.data);
   if (!slugBase) return { error: 'Enter a name containing letters or numbers.' };
 
-  try {
-    await database.organization.create({
-      data: {
-        name: result.data,
-        slug: `${slugBase}-${randomBytes(3).toString('hex')}`,
-        memberships: {
-          create: { userId: session.user.id, role: MembershipRole.ADMIN },
-        },
-      },
+  let created = false;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const existing = await database.organization.findMany({
+      where: { OR: [{ slug: slugBase }, { slug: { startsWith: `${slugBase}-` } }] },
+      select: { slug: true },
     });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return { error: 'That organization could not be created. Please try again.' };
+    const slug = nextOrganizationSlug(
+      slugBase,
+      existing.map((organization) => organization.slug),
+    );
+
+    try {
+      await database.organization.create({
+        data: {
+          name: result.data,
+          slug,
+          memberships: {
+            create: { userId: session.user.id, role: MembershipRole.ADMIN },
+          },
+        },
+      });
+      created = true;
+      break;
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+        throw error;
+      }
+
+      const target = error.meta?.target;
+      const slugConflict = Array.isArray(target)
+        ? target.includes('slug')
+        : String(target ?? '').includes('slug');
+      if (!slugConflict) {
+        return { error: 'That organization could not be created. Please try again.' };
+      }
     }
-    throw error;
   }
 
+  if (!created) return { error: 'That organization name is busy. Please try again.' };
   redirect('/dashboard');
 }

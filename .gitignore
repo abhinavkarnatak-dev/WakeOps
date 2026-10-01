@@ -37,3 +37,6 @@ service_account*.json
 [Cc][Ll][Aa][Uu][Dd][Ee].local.md
 [Ss][Kk][Ii][Ll][Ll].md
 [Ss][Kk][Ii][Ll][Ll][Ss].md
+
+# Local reference documents
+docs/

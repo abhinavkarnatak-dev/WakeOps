@@ -66,7 +66,11 @@ export function parseGrafanaWebhook(input: unknown): GrafanaWebhookSummary {
     status: payload.status,
     alertCount: payload.alerts.length,
     alertName:
-      firstAlert?.labels.alertname ?? payload.commonLabels?.alertname ?? 'Grafana test alert',
+      firstAlert?.labels.alertName ??
+      firstAlert?.labels.alertname ??
+      payload.commonLabels?.alertName ??
+      payload.commonLabels?.alertname ??
+      'Grafana test alert',
     payloadPreview: {
       receiver: payload.receiver ?? null,
       status: payload.status,
@@ -95,6 +99,12 @@ function optionalDate(value: string | undefined) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+export function normalizeGrafanaValue(value: string | undefined) {
+  if (!value) return null;
+  const match = value.match(/\bvalue=([^\]\s]+)/i);
+  return match?.[1]?.trim() || null;
+}
+
 function normalizeSeverity(value: string | undefined): AlertSeverity | null {
   const normalized = value?.trim().toLowerCase();
   if (normalized === 'critical') return 'CRITICAL';
@@ -117,7 +127,7 @@ export function normalizeGrafanaWebhook(
   return payload.alerts.map((grafanaAlert) => {
     const mergedLabels = { ...payload.commonLabels, ...grafanaAlert.labels };
     const mergedAnnotations = { ...payload.commonAnnotations, ...grafanaAlert.annotations };
-    const alertName = mergedLabels.alertname?.trim() || null;
+    const alertName = mergedLabels.alertName?.trim() || mergedLabels.alertname?.trim() || null;
     const resourceIdentifier = mergedLabels.instance?.trim() || null;
     const service = mergedLabels.service?.trim().toLowerCase() || null;
     const environment = mergedLabels.environment?.trim().toLowerCase() || null;
@@ -180,7 +190,10 @@ export function normalizeGrafanaWebhook(
         environment,
         alertName,
         severity,
-        value: mergedAnnotations.value ?? mergedLabels.value ?? grafanaAlert.valueString ?? null,
+        value:
+          mergedAnnotations.value ??
+          mergedLabels.value ??
+          normalizeGrafanaValue(grafanaAlert.valueString),
         startedAt,
         endedAt,
         status: alertStatus(grafanaAlert.status),

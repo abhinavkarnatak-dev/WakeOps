@@ -2,6 +2,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from './app.js';
 
 const secret = 'grafana-test-secret-with-at-least-32-characters';
+const resolveGrafanaOrganizationId = vi.fn(async (key: string) =>
+  key === 'test-org' ? 'org-1' : null,
+);
 const authenticateGrafanaWebhook = vi.fn(
   async (_organizationId: string, provided: string) => provided === secret,
 );
@@ -15,6 +18,7 @@ const processGrafanaAlerts = vi.fn(async () => [
   },
 ]);
 const server = createApp({
+  resolveGrafanaOrganizationId,
   authenticateGrafanaWebhook,
   recordGrafanaTest,
   processGrafanaAlerts,
@@ -32,7 +36,7 @@ afterAll(() => server.close());
 function endpoint() {
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Test server has no TCP port.');
-  return `http://127.0.0.1:${address.port}/webhooks/grafana/org-1`;
+  return `http://127.0.0.1:${address.port}/webhooks/grafana/test-org`;
 }
 
 const payload = {
@@ -55,6 +59,7 @@ describe('Grafana webhook', () => {
       body: JSON.stringify(payload),
     });
     expect(response.status).toBe(202);
+    expect(resolveGrafanaOrganizationId).toHaveBeenCalledWith('test-org');
     expect(authenticateGrafanaWebhook).toHaveBeenCalledWith('org-1', secret);
     expect(recordGrafanaTest).toHaveBeenCalledWith(
       'org-1',

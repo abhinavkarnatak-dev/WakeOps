@@ -51,15 +51,15 @@ function Values({ title, values }: { title: string; values: Record<string, strin
   const entries = Object.entries(values);
   return (
     <div>
-      <p className="text-sm font-medium text-slate-200">{title}</p>
+      <p className="text-sm font-medium text-zinc-200">{title}</p>
       {!entries.length ? (
-        <p className="mt-1 text-xs text-slate-500">None</p>
+        <p className="mt-1 text-xs text-zinc-500">None</p>
       ) : (
         <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
           {entries.map(([key, value]) => (
-            <div key={key} className="rounded-md bg-slate-950 p-2">
-              <dt className="text-cyan-300">{key}</dt>
-              <dd className="mt-1 break-words text-slate-300">{value}</dd>
+            <div key={key} className="rounded-lg border border-white/6 bg-black/25 p-3">
+              <dt className="text-lime-300">{key}</dt>
+              <dd className="mt-1 break-words text-zinc-300">{value}</dd>
             </div>
           ))}
         </dl>
@@ -84,26 +84,26 @@ function ProcessingResult({ result }: { result: GrafanaProcessingResult }) {
   return (
     <div
       className={`rounded-lg border p-4 ${
-        failed ? 'border-amber-700 bg-amber-950/30' : 'border-emerald-700 bg-emerald-950/30'
+        failed ? 'border-amber-700 bg-amber-950/30' : 'border-lime-400/25 bg-lime-400/5'
       }`}
     >
-      <p className={`font-semibold ${failed ? 'text-amber-200' : 'text-emerald-300'}`}>
+      <p className={`font-semibold ${failed ? 'text-amber-200' : 'text-lime-300'}`}>
         {failed ? 'Alert mapping needs attention' : 'Alert mapped successfully'}
       </p>
       {failed ? (
-        <p className="mt-2 text-sm text-slate-300">{result.mappingError}</p>
+        <p className="mt-2 text-sm text-zinc-300">{result.mappingError}</p>
       ) : (
         <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500">Incident</dt>
+            <dt className="text-zinc-500">Incident</dt>
             <dd>{result.incident ? incidentReference(result.incident.id) : 'Existing incident'}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Status</dt>
+            <dt className="text-zinc-500">Status</dt>
             <dd>{result.incident?.status ?? result.processingStatus}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Host</dt>
+            <dt className="text-zinc-500">Host</dt>
             <dd>
               {result.incident
                 ? `${result.incident.resource.name} (${result.incident.resource.externalIdentifier})`
@@ -111,23 +111,23 @@ function ProcessingResult({ result }: { result: GrafanaProcessingResult }) {
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500">Service and environment</dt>
+            <dt className="text-zinc-500">Service and environment</dt>
             <dd>
               {result.incident?.application.name ?? result.service} -{' '}
               {result.incident?.environment.name ?? result.environment}
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500">Primary engineer</dt>
+            <dt className="text-zinc-500">On-call engineer</dt>
             <dd>{String(metadata.primaryEngineerName ?? 'Assigned')}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Processing</dt>
+            <dt className="text-zinc-500">Processing</dt>
             <dd>{result.processingStatus}</dd>
           </div>
         </dl>
       )}
-      <p className="mt-3 text-xs text-slate-500">
+      <p className="mt-3 text-xs text-zinc-500">
         Processed {new Date(result.receivedAt).toLocaleString()}
       </p>
     </div>
@@ -173,25 +173,25 @@ export function GrafanaTestStatus({
 
   return (
     <div className="space-y-4">
-      <div role="status" className="rounded-lg border border-emerald-700 bg-emerald-950/30 p-4">
-        <p className="font-semibold text-emerald-300">Grafana webhook received</p>
-        <p className="mt-2 text-sm text-slate-300">
+      <div role="status" className="rounded-lg border border-lime-400/25 bg-lime-400/5 p-4">
+        <p className="font-semibold text-lime-300">Grafana webhook received</p>
+        <p className="mt-2 text-sm text-zinc-300">
           {receipt.alertName ?? 'Grafana alert'} - {receipt.status} - {receipt.alertCount} alert
           {receipt.alertCount === 1 ? '' : 's'}
         </p>
-        <p className="mt-1 text-xs text-slate-400">
+        <p className="mt-1 text-xs text-zinc-400">
           Received {new Date(receipt.receivedAt).toLocaleString()}
         </p>
       </div>
       {processing && <ProcessingResult result={processing} />}
       {receipt.payloadPreview && (
-        <details open className="rounded-lg border border-slate-700 bg-slate-950/40 p-4">
+        <details open>
           <summary className="cursor-pointer font-semibold">Inspect received payload</summary>
           <div className="mt-4 space-y-5">
             <Values title="Common labels" values={receipt.payloadPreview.commonLabels} />
             <Values title="Common annotations" values={receipt.payloadPreview.commonAnnotations} />
             {receipt.payloadPreview.alerts.map((alert, index) => (
-              <div key={index} className="space-y-4 border-t border-slate-800 pt-4">
+              <div key={index} className="space-y-4 border-t border-white/6 pt-4">
                 <p className="text-sm font-semibold">Alert {index + 1}</p>
                 <Values title="Labels" values={alert.labels} />
                 <Values title="Annotations" values={alert.annotations} />

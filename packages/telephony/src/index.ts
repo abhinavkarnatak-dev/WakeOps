@@ -13,11 +13,17 @@ export type TelephonyCallStatus =
   | 'BUSY'
   | 'CANCELED';
 
+export type TerminalTelephonyCallStatus = Extract<
+  TelephonyCallStatus,
+  'COMPLETED' | 'FAILED' | 'NO_ANSWER' | 'BUSY' | 'CANCELED'
+>;
+
 export type CreateCallInput = {
   to: string;
   from: string;
   voiceUrl: string;
   statusCallbackUrl: string;
+  ringTimeoutSeconds?: number;
 };
 
 export type CreateCallResult = {
@@ -29,6 +35,26 @@ export interface TelephonyProvider {
   createCall(input: CreateCallInput): Promise<CreateCallResult>;
 }
 
+export function twilioCallRequest(input: CreateCallInput, trialMode: boolean) {
+  const request = {
+    to: input.to,
+    from: input.from,
+    url: input.voiceUrl,
+    statusCallback: input.statusCallbackUrl,
+    ...(trialMode || input.ringTimeoutSeconds === undefined
+      ? {}
+      : { timeout: input.ringTimeoutSeconds }),
+  };
+  return trialMode
+    ? request
+    : {
+        ...request,
+        method: 'POST' as const,
+        statusCallbackMethod: 'POST' as const,
+        statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+      };
+}
+
 export function createTwilioProvider(
   accountSid: string,
   authToken: string,
@@ -37,22 +63,7 @@ export function createTwilioProvider(
   const client = twilio(accountSid, authToken);
   return {
     async createCall(input) {
-      const baseRequest = {
-        to: input.to,
-        from: input.from,
-        url: input.voiceUrl,
-        statusCallback: input.statusCallbackUrl,
-      };
-      const call = await client.calls.create(
-        options.trialMode
-          ? baseRequest
-          : {
-              ...baseRequest,
-              method: 'POST',
-              statusCallbackMethod: 'POST',
-              statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-            },
-      );
+      const call = await client.calls.create(twilioCallRequest(input, options.trialMode === true));
       return {
         providerCallId: call.sid,
         status: normalizeTwilioCallStatus(call.status),
@@ -98,7 +109,9 @@ export function advanceCallStatus(current: TelephonyCallStatus, incoming: Teleph
   return statusRank[incoming] >= statusRank[current] ? incoming : current;
 }
 
-export function isTerminalCallStatus(status: TelephonyCallStatus) {
+export function isTerminalCallStatus(
+  status: TelephonyCallStatus,
+): status is TerminalTelephonyCallStatus {
   return terminalStatuses.has(status);
 }
 

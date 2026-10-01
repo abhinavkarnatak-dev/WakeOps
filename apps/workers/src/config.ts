@@ -23,6 +23,11 @@ const workerConfigSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  AMQP_URL: z.string().min(1).default('amqp://guest:guest@localhost:5672'),
+  WEB_URL: z.string().url().default('http://localhost:3000'),
+  RESEND_API_KEY: optionalString,
+  EMAIL_FROM: optionalString,
+  ENCRYPTION_KEY: optionalString,
 });
 
 export const workerConfig = workerConfigSchema.parse(process.env);

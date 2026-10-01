@@ -5,10 +5,26 @@ import {
   createTrialVoiceToken,
   incidentVoiceXml,
   normalizeTwilioCallStatus,
+  twilioCallRequest,
   validateTrialVoiceToken,
 } from './index.js';
 
 describe('Twilio telephony helpers', () => {
+  it('omits unsupported call options in trial mode', () => {
+    const input = {
+      to: '+910000000000',
+      from: '+10000000000',
+      voiceUrl: 'https://example.com/voice',
+      statusCallbackUrl: 'https://example.com/status',
+      ringTimeoutSeconds: 30,
+    };
+    expect(twilioCallRequest(input, true)).not.toHaveProperty('timeout');
+    expect(twilioCallRequest(input, false)).toMatchObject({
+      timeout: 30,
+      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+    });
+  });
+
   it.each([
     ['queued', 'QUEUED'],
     ['ringing', 'RINGING'],

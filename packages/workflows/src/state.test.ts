@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { IncidentWorkflowState } from './contracts.js';
-import { transitionIncidentWorkflow } from './state.js';
+import {
+  callResultDecision,
+  callTimingPolicy,
+  incidentEscalationPlan,
+  transitionIncidentWorkflow,
+} from './state.js';
 
 const startingState: IncidentWorkflowState = {
   incidentId: 'incident-1',
@@ -11,6 +16,51 @@ const startingState: IncidentWorkflowState = {
 };
 
 describe('incident workflow transitions', () => {
+  it('retries within the 45 second escalation window', () => {
+    expect(callTimingPolicy).toEqual({
+      resultTimeout: '45 seconds',
+      retryDelay: '15 seconds',
+    });
+  });
+
+  it('calls the primary twice before escalating to the secondary', () => {
+    expect(incidentEscalationPlan()).toEqual([
+      { role: 'PRIMARY', attemptNumber: 1 },
+      { role: 'PRIMARY', attemptNumber: 2 },
+      { role: 'SECONDARY', attemptNumber: 1 },
+      { role: 'SECONDARY', attemptNumber: 2 },
+    ]);
+  });
+
+  it('acknowledges only an answered completed call', () => {
+    expect(
+      callResultDecision({
+        callAttemptId: 'call-1',
+        status: 'COMPLETED',
+        answered: true,
+        completedAt: '2026-10-01T09:00:00.000Z',
+      }),
+    ).toBe('ACKNOWLEDGE');
+    for (const status of ['NO_ANSWER', 'BUSY', 'FAILED', 'CANCELED'] as const) {
+      expect(
+        callResultDecision({
+          callAttemptId: 'call-2',
+          status,
+          answered: false,
+          completedAt: '2026-10-01T09:01:00.000Z',
+        }),
+      ).toBe('RETRY');
+    }
+    expect(
+      callResultDecision({
+        callAttemptId: 'call-3',
+        status: 'COMPLETED',
+        answered: false,
+        completedAt: '2026-10-01T09:02:00.000Z',
+      }),
+    ).toBe('RETRY');
+  });
+
   it('waits for acknowledgement after initialization', () => {
     const state = transitionIncidentWorkflow(startingState, {
       type: 'INITIALIZED',

@@ -1,6 +1,7 @@
 export const INCIDENT_WORKFLOW_NAME = 'incidentWorkflow';
 export const INCIDENT_ACKNOWLEDGED_SIGNAL = 'incidentAcknowledged';
 export const INCIDENT_RESOLVED_SIGNAL = 'incidentResolved';
+export const INCIDENT_CALL_COMPLETED_SIGNAL = 'incidentCallCompleted';
 export const INCIDENT_STATE_QUERY = 'incidentState';
 
 export type IncidentWorkflowInput = {
@@ -29,7 +30,7 @@ export type IncidentWorkflowState = {
 
 export type IncidentWorkflowResult = {
   incidentId: string;
-  finalStatus: 'RESOLVED';
+  finalStatus: 'ACKNOWLEDGED' | 'RESOLVED';
 };
 
 export type InitializeIncidentResult = {
@@ -37,14 +38,31 @@ export type InitializeIncidentResult = {
   acknowledgedAt: string | null;
 };
 
-export type InitiatePrimaryCallResult = {
+export type InitiateEngineerCallResult = {
   callAttemptId: string | null;
+  engineerName: string | null;
   status: 'STARTED' | 'EXISTING' | 'SKIPPED' | 'FAILED' | 'SUBMISSION_UNKNOWN';
+};
+
+export type IncidentCallResult = {
+  callAttemptId: string;
+  status: 'COMPLETED' | 'FAILED' | 'NO_ANSWER' | 'BUSY' | 'CANCELED';
+  answered: boolean;
+  completedAt: string;
 };
 
 export type IncidentActivities = {
   initializeIncidentWorkflow(incidentId: string): Promise<InitializeIncidentResult>;
-  initiatePrimaryCall(incidentId: string): Promise<InitiatePrimaryCallResult>;
+  publishIncidentNotifications(incidentId: string): Promise<void>;
+  initiatePrimaryCall(
+    incidentId: string,
+    attemptNumber: number,
+  ): Promise<InitiateEngineerCallResult>;
+  initiateSecondaryCall(
+    incidentId: string,
+    attemptNumber: number,
+  ): Promise<InitiateEngineerCallResult>;
+  getCallResult(callAttemptId: string): Promise<IncidentCallResult | null>;
   acknowledgeIncident(incidentId: string, acknowledgement: IncidentAcknowledgement): Promise<void>;
   resolveIncident(incidentId: string, resolution: IncidentResolution): Promise<void>;
 };

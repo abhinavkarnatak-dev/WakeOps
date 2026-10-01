@@ -15,3 +15,12 @@ export function toOrganizationSlug(name: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 60);
 }
+
+export function nextOrganizationSlug(base: string, existingSlugs: Iterable<string>): string {
+  const taken = new Set(existingSlugs);
+  if (!taken.has(base)) return base;
+
+  let suffix = 2;
+  while (taken.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
+}

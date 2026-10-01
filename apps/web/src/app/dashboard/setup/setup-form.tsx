@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, type ReactNode } from 'react';
+import { useActionState, useEffect, type ReactNode } from 'react';
+import { useActionToast } from '@/components/toast-provider';
 import { saveSetup, type SetupState } from './actions';
 import { DeleteRecord } from './delete-record';
 
@@ -11,6 +12,8 @@ export function SetupForm({
   operation = 'create',
   recordId,
   compact = false,
+  onSuccess,
+  onCancel,
 }: {
   kind: string;
   children: ReactNode;
@@ -18,8 +21,14 @@ export function SetupForm({
   operation?: 'create' | 'update' | 'delete';
   recordId?: string;
   compact?: boolean;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }) {
   const [state, action, pending] = useActionState(saveSetup, {} as SetupState);
+  useActionToast(state);
+  useEffect(() => {
+    if (state.success) onSuccess?.();
+  }, [onSuccess, state.success]);
   if (operation === 'delete')
     return (
       <DeleteRecord kind={kind} recordId={recordId} disabled={disabled} compact={compact}>
@@ -36,34 +45,29 @@ export function SetupForm({
           {children}
         </fieldset>
       )}
-      {state.error && (
-        <p
-          role="alert"
+      <div className={operation === 'update' ? 'flex justify-end gap-3 pt-1' : ''}>
+        {operation === 'update' && onCancel && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onCancel}
+            className="rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/5 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={disabled || pending}
           className={
             compact
-              ? 'absolute right-0 top-full z-10 mt-2 w-64 rounded-lg border border-red-900 bg-slate-950 p-3 text-sm text-red-300 shadow-lg'
-              : 'text-sm text-red-300'
+              ? 'rounded-md px-2 py-1 text-sm text-red-300 hover:bg-red-950/50 disabled:opacity-50'
+              : 'rounded-xl bg-lime-300 px-4 py-2 font-semibold text-zinc-950 transition hover:bg-lime-200 disabled:opacity-50'
           }
         >
-          {state.error}
-        </p>
-      )}
-      {state.success && !compact && (
-        <p role="status" className="text-sm text-emerald-300">
-          {state.success}
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={disabled || pending}
-        className={
-          compact
-            ? 'rounded-md px-2 py-1 text-sm text-red-300 hover:bg-red-950/50 disabled:opacity-50'
-            : 'rounded-lg bg-cyan-300 px-4 py-2 font-semibold text-slate-950 disabled:opacity-50'
-        }
-      >
-        {pending ? 'Working...' : operation === 'update' ? 'Save changes' : 'Save'}
-      </button>
+          {pending ? 'Working...' : operation === 'update' ? 'Save changes' : 'Save'}
+        </button>
+      </div>
     </form>
   );
 }

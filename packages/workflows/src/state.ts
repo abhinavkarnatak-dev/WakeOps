@@ -1,8 +1,30 @@
 import type {
+  IncidentCallResult,
   IncidentAcknowledgement,
   IncidentWorkflowPhase,
   IncidentWorkflowState,
 } from './contracts.js';
+
+export type CallResultDecision = 'ACKNOWLEDGE' | 'RETRY';
+export type EngineerCallRole = 'PRIMARY' | 'SECONDARY';
+
+export const callTimingPolicy = {
+  resultTimeout: '45 seconds',
+  retryDelay: '15 seconds',
+} as const;
+
+export function incidentEscalationPlan() {
+  return [
+    { role: 'PRIMARY' as const, attemptNumber: 1 },
+    { role: 'PRIMARY' as const, attemptNumber: 2 },
+    { role: 'SECONDARY' as const, attemptNumber: 1 },
+    { role: 'SECONDARY' as const, attemptNumber: 2 },
+  ];
+}
+
+export function callResultDecision(result: IncidentCallResult): CallResultDecision {
+  return result.status === 'COMPLETED' && result.answered ? 'ACKNOWLEDGE' : 'RETRY';
+}
 
 export type IncidentWorkflowEvent =
   | { type: 'INITIALIZED'; acknowledged: boolean; resolved: boolean }

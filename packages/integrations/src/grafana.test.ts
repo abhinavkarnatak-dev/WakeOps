@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeGrafanaWebhook, parseGrafanaWebhook } from './grafana.js';
+import {
+  normalizeGrafanaValue,
+  normalizeGrafanaWebhook,
+  parseGrafanaWebhook,
+} from './grafana.js';
 
 describe('Grafana webhook adapter', () => {
+  it('extracts the useful value from Grafana expression output', () => {
+    expect(normalizeGrafanaValue("[ metric='foo' labels={instance=bar} value=10 ]")).toBe('10');
+    expect(normalizeGrafanaValue(undefined)).toBeNull();
+  });
+
   it('parses a Grafana test notification', () => {
     expect(
       parseGrafanaWebhook({
@@ -76,6 +85,33 @@ describe('Grafana webhook adapter', () => {
         labels: expect.objectContaining({ region: 'ap-south-1' }),
         annotations: expect.objectContaining({ summary: 'Error rate is high' }),
       }),
+    });
+  });
+
+  it('prefers a custom alertName over Grafana test alertname', () => {
+    const [result] = normalizeGrafanaWebhook(
+      {
+        status: 'firing',
+        alerts: [
+          {
+            status: 'firing',
+            labels: {
+              alertname: 'TestAlert',
+              alertName: 'WakeOpsEscalationTest1',
+              service: 'payment-service',
+              environment: 'production',
+              instance: 'i-111',
+              severity: 'critical',
+            },
+          },
+        ],
+      },
+      'org-1',
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      alert: expect.objectContaining({ alertName: 'WakeOpsEscalationTest1' }),
     });
   });
 

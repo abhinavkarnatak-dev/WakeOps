@@ -1,6 +1,8 @@
 'use client';
 
-import { useActionState, useId, useRef, useState } from 'react';
+import { useActionState, useEffect, useId, useRef } from 'react';
+import { CopyValueButton } from '@/components/copy-value-button';
+import { useActionToast } from '@/components/toast-provider';
 import { manageGrafanaConnection, type GrafanaConnectionState } from './actions';
 
 type Props = {
@@ -14,63 +16,58 @@ export function GrafanaConnection({ configured, secretHint, lastVerifiedAt }: Pr
     manageGrafanaConnection,
     {},
   );
-  const [copied, setCopied] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const headingId = useId();
+  useActionToast(state);
 
-  async function copySecret() {
-    if (!state.secret) return;
-    await navigator.clipboard.writeText(state.secret);
-    setCopied(true);
-  }
+  useEffect(() => {
+    if (state.success === 'Grafana disconnected. The previous secret no longer works.') {
+      dialog.current?.close();
+    }
+  }, [state.success]);
 
   return (
-    <div className="rounded-lg border border-slate-700 p-4">
+    <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="font-semibold">Grafana credentials</p>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-zinc-400">
             {lastVerifiedAt
-              ? `Verified ${new Date(lastVerifiedAt).toLocaleString()}`
+              ? `Connected. Last webhook received ${new Date(lastVerifiedAt).toLocaleString()}.`
               : configured
-                ? 'Configured, waiting for a successful Grafana test.'
+                ? 'Connection credentials are ready. Webhook testing is tracked separately.'
                 : 'Generate credentials before creating the Grafana contact point.'}
           </p>
           {configured && secretHint && (
-            <p className="mt-1 text-xs text-slate-500">Current secret ends with {secretHint}</p>
+            <p className="mt-1 text-xs text-zinc-500">Current secret ends with {secretHint}</p>
           )}
         </div>
         <span
           className={`rounded-full border px-3 py-1 text-xs ${
-            lastVerifiedAt
-              ? 'border-emerald-700 text-emerald-300'
-              : configured
-                ? 'border-amber-700 text-amber-300'
-                : 'border-slate-600 text-slate-300'
+            configured ? 'border-lime-400/25 text-lime-300' : 'border-white/10 text-zinc-300'
           }`}
         >
-          {lastVerifiedAt ? 'Connected' : configured ? 'Needs test' : 'Not connected'}
+          {configured ? 'Connected' : 'Not connected'}
         </span>
       </div>
 
-      {state.error && <p className="mt-4 text-sm text-red-300">{state.error}</p>}
-      {state.success && <p className="mt-4 text-sm text-emerald-300">{state.success}</p>}
       {state.secret && (
         <div className="mt-4 rounded-lg border border-amber-700 bg-amber-950/30 p-4">
           <p className="font-semibold text-amber-200">Copy this secret now</p>
-          <p className="mt-1 text-sm text-slate-300">
+          <p className="mt-1 text-sm text-zinc-300">
             WakeOps stores only its hash, so this value will not be shown again.
           </p>
-          <code className="mt-3 block overflow-x-auto rounded bg-slate-950 p-3 text-sm text-cyan-200">
-            {state.secret}
-          </code>
-          <button
-            type="button"
-            onClick={copySecret}
-            className="mt-3 rounded-lg border border-cyan-700 px-3 py-2 text-sm text-cyan-200"
-          >
-            {copied ? 'Copied' : 'Copy secret'}
-          </button>
+          <div className="relative mt-3">
+            <code className="block overflow-x-auto rounded border border-white/5 bg-black/35 p-3 pr-12 text-sm text-lime-200">
+              {state.secret}
+            </code>
+            <CopyValueButton
+              value={state.secret}
+              label="Copy Grafana secret"
+              successMessage="Grafana secret copied."
+              className="absolute top-1/2 right-2 -translate-y-1/2"
+            />
+          </div>
         </div>
       )}
 
@@ -79,7 +76,7 @@ export function GrafanaConnection({ configured, secretHint, lastVerifiedAt }: Pr
           <input type="hidden" name="operation" value={configured ? 'rotate' : 'generate'} />
           <button
             disabled={pending}
-            className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="rounded-lg bg-lime-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-lime-200 disabled:opacity-50"
           >
             {pending ? 'Saving...' : configured ? 'Rotate secret' : 'Generate credentials'}
           </button>
@@ -101,12 +98,12 @@ export function GrafanaConnection({ configured, secretHint, lastVerifiedAt }: Pr
         onCancel={(event) => {
           if (pending) event.preventDefault();
         }}
-        className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-2xl backdrop:bg-black/70"
+        className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-white/10 bg-[#0c0d0d] p-6 text-zinc-100 shadow-2xl backdrop:bg-black/70"
       >
         <h2 id={headingId} className="text-xl font-semibold">
           Disconnect Grafana?
         </h2>
-        <p className="mt-3 text-sm text-slate-300">
+        <p className="mt-3 text-sm text-zinc-300">
           The current secret will stop working and the saved test receipt will be removed. You can
           generate new credentials later.
         </p>
@@ -118,7 +115,7 @@ export function GrafanaConnection({ configured, secretHint, lastVerifiedAt }: Pr
               autoFocus
               disabled={pending}
               onClick={() => dialog.current?.close()}
-              className="rounded-lg border border-slate-600 px-4 py-2 text-sm disabled:opacity-50"
+              className="rounded-lg border border-white/10 px-4 py-2 text-sm disabled:opacity-50"
             >
               Cancel
             </button>

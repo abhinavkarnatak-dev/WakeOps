@@ -13,16 +13,17 @@ enum MembershipRole {
 }
 
 model User {
-  id            String       @id @default(cuid())
+  id            String                 @id @default(cuid())
   name          String?
-  email         String?      @unique
+  email         String?                @unique
   emailVerified DateTime?
   image         String?
   accounts      Account[]
   sessions      Session[]
   memberships   Membership[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  oauthStates   OAuthConnectionState[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
 }
 
 model Account {
@@ -74,6 +75,9 @@ model Organization {
   webhookTests       MonitoringWebhookTest[]
   incidents          Incident[]
   alertEvents        AlertEvent[]
+  slackInstallation  SlackInstallation?
+  slackDestinations  SlackDestination[]
+  oauthStates        OAuthConnectionState[]
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 }
@@ -140,6 +144,19 @@ enum AuditEventType {
   INCIDENT_RESOLVED
   CALL_REQUESTED
   CALL_STATUS_UPDATED
+  NOTIFICATION_REQUESTED
+  NOTIFICATION_STATUS_UPDATED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SLACK
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
 }
 
 enum CallAttemptStatus {
@@ -249,57 +266,119 @@ model OnCallAssignment {
 }
 
 model Incident {
-  id                String            @id @default(cuid())
-  organizationId    String
-  applicationId     String
-  environmentId     String
-  resourceId        String
-  source            MonitoringSource
-  fingerprint       String
-  activeFingerprint String?
-  alertName         String
-  severity          AlertSeverity
-  value             String?
-  status            IncidentStatus    @default(OPEN)
-  labels            Json
-  annotations       Json
-  metadata          Json
-  startedAt         DateTime
-  lastSeenAt        DateTime
-  acknowledgedAt    DateTime?
-  resolvedAt        DateTime?
-  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  application       Application       @relation(fields: [organizationId, applicationId], references: [organizationId, id], onDelete: Restrict)
-  environment       Environment       @relation(fields: [organizationId, environmentId], references: [organizationId, id], onDelete: Restrict)
-  resource          MonitoredResource @relation(fields: [organizationId, resourceId], references: [organizationId, id], onDelete: Restrict)
-  alertEvents       AlertEvent[]
-  auditEvents       AuditEvent[]
-  callAttempts      CallAttempt[]
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  id                   String                @id @default(cuid())
+  organizationId       String
+  applicationId        String
+  environmentId        String
+  resourceId           String
+  source               MonitoringSource
+  fingerprint          String
+  activeFingerprint    String?
+  alertName            String
+  severity             AlertSeverity
+  value                String?
+  status               IncidentStatus        @default(OPEN)
+  labels               Json
+  annotations          Json
+  metadata             Json
+  startedAt            DateTime
+  lastSeenAt           DateTime
+  acknowledgedAt       DateTime?
+  resolvedAt           DateTime?
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  application          Application           @relation(fields: [organizationId, applicationId], references: [organizationId, id], onDelete: Restrict)
+  environment          Environment           @relation(fields: [organizationId, environmentId], references: [organizationId, id], onDelete: Restrict)
+  resource             MonitoredResource     @relation(fields: [organizationId, resourceId], references: [organizationId, id], onDelete: Restrict)
+  alertEvents          AlertEvent[]
+  auditEvents          AuditEvent[]
+  callAttempts         CallAttempt[]
+  notificationAttempts NotificationAttempt[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   @@unique([organizationId, activeFingerprint])
   @@index([organizationId, status, createdAt])
   @@index([organizationId, fingerprint, createdAt])
 }
 
+model NotificationAttempt {
+  id                String              @id @default(cuid())
+  incidentId        String
+  channel           NotificationChannel
+  status            NotificationStatus  @default(PENDING)
+  destination       String
+  attemptCount      Int                 @default(0)
+  providerMessageId String?
+  failureMessage    String?
+  sentAt            DateTime?
+  incident          Incident            @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([incidentId, channel])
+  @@index([status, createdAt])
+}
+
+model SlackInstallation {
+  id                   String             @id @default(cuid())
+  organizationId       String             @unique
+  teamId               String
+  teamName             String
+  botUserId            String?
+  accessTokenEncrypted String             @db.Text
+  scopes               String
+  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  destinations         SlackDestination[]
+  connectedAt          DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([teamId])
+}
+
+model SlackDestination {
+  id             String            @id @default(cuid())
+  organizationId String            @unique
+  installationId String
+  channelId      String
+  channelName    String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  installation   SlackInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([installationId, channelId])
+}
+
+model OAuthConnectionState {
+  stateHash      String       @id
+  organizationId String
+  userId         String
+  provider       String
+  expiresAt      DateTime
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([expiresAt])
+}
+
 model CallAttempt {
-  id                    String            @id @default(cuid())
-  incidentId            String
-  engineerId            String
-  attemptNumber         Int
-  status                CallAttemptStatus @default(CREATED)
-  providerCallId        String?           @unique
-  submissionStartedAt   DateTime?
-  initiatedAt           DateTime?
-  answeredAt            DateTime?
-  completedAt           DateTime?
-  failureCode           String?
-  failureMessage        String?
-  incident              Incident          @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  engineer              Engineer          @relation(fields: [engineerId], references: [id], onDelete: Restrict)
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
+  id                  String            @id @default(cuid())
+  incidentId          String
+  engineerId          String
+  attemptNumber       Int
+  status              CallAttemptStatus @default(CREATED)
+  providerCallId      String?           @unique
+  submissionStartedAt DateTime?
+  initiatedAt         DateTime?
+  answeredAt          DateTime?
+  completedAt         DateTime?
+  failureCode         String?
+  failureMessage      String?
+  incident            Incident          @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  engineer            Engineer          @relation(fields: [engineerId], references: [id], onDelete: Restrict)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   @@unique([incidentId, engineerId, attemptNumber])
   @@index([incidentId, createdAt])

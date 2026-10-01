@@ -9,7 +9,7 @@ export function GoogleSignIn() {
       }}
     >
       <button
-        className="rounded-lg bg-cyan-300 px-5 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200"
+        className="rounded-xl bg-lime-300 px-5 py-3 font-semibold text-zinc-950 transition hover:bg-lime-200"
         type="submit"
       >
         Continue with Google

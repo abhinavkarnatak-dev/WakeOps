@@ -7,7 +7,10 @@ export async function requireOrganization() {
   if (!session?.user.id) redirect('/login');
   const membership = await database.membership.findFirst({
     where: { userId: session.user.id },
-    include: { organization: true },
+    include: {
+      organization: true,
+      user: { select: { name: true, email: true } },
+    },
     orderBy: { createdAt: 'asc' },
   });
   if (!membership) redirect('/onboarding');

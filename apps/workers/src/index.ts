@@ -5,6 +5,7 @@ import pino from 'pino';
 
 import { incidentActivities } from './activities.js';
 import { workerConfig } from './config.js';
+import { startNotificationConsumers } from './notification-queue.js';
 
 const logger = pino({
   level: workerConfig.LOG_LEVEL,
@@ -12,6 +13,7 @@ const logger = pino({
 });
 
 async function run() {
+  await startNotificationConsumers(logger);
   const connection = await NativeConnection.connect({
     address: workerConfig.TEMPORAL_ADDRESS,
     tls: true,
@@ -30,6 +32,7 @@ async function run() {
     {
       namespace: workerConfig.TEMPORAL_NAMESPACE,
       taskQueue: workerConfig.TEMPORAL_TASK_QUEUE,
+      callPolicy: 'primary-2-secondary-2-complete-on-ack',
     },
     'Temporal worker started',
   );

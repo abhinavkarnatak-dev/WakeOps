@@ -11,11 +11,22 @@ import { twilioWebhookDependencies } from './twilio-calls.js';
 import { createTwilioWebhookRouter, type TwilioWebhookDependencies } from './twilio-webhook.js';
 
 type AppOptions = {
+  resolveGrafanaOrganizationId?: Parameters<
+    typeof createGrafanaWebhookRouter
+  >[0]['resolveOrganizationId'];
   authenticateGrafanaWebhook?: Parameters<typeof createGrafanaWebhookRouter>[0]['authenticate'];
   recordGrafanaTest?: Parameters<typeof createGrafanaWebhookRouter>[0]['recordTest'];
   processGrafanaAlerts?: Parameters<typeof createGrafanaWebhookRouter>[0]['processAlerts'];
   twilioWebhooks?: TwilioWebhookDependencies;
 };
+
+async function resolveGrafanaOrganizationId(organizationKey: string) {
+  const organization = await database.organization.findFirst({
+    where: { OR: [{ id: organizationKey }, { slug: organizationKey }] },
+    select: { id: true },
+  });
+  return organization?.id ?? null;
+}
 
 async function authenticateGrafanaWebhook(organizationId: string, secret: string) {
   const integration = await database.grafanaIntegration.findUnique({
@@ -95,6 +106,7 @@ export function createApp(options: AppOptions = {}) {
   app.use(
     '/webhooks/grafana',
     createGrafanaWebhookRouter({
+      resolveOrganizationId: options.resolveGrafanaOrganizationId ?? resolveGrafanaOrganizationId,
       authenticate: options.authenticateGrafanaWebhook ?? authenticateGrafanaWebhook,
       recordTest: options.recordGrafanaTest ?? recordGrafanaTest,
       processAlerts: options.processGrafanaAlerts ?? processGrafanaAlerts,
