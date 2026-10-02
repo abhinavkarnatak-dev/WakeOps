@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createResendEmailProvider,
   decryptSecret,
   encryptSecret,
   incidentReference,
@@ -40,5 +41,34 @@ describe('notification helpers', () => {
     expect(JSON.stringify(message)).toContain('Open Incident INC-ULZ5KZJP');
     expect(JSON.stringify(message)).toContain('Reported value');
     expect(JSON.stringify(message)).not.toContain("metric='foo'");
+  });
+
+  it('formats incident emails with the public reference and WakeOps styling', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'email-1' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createResendEmailProvider('re_test', 'WakeOps <noreply@example.com>').sendIncident(
+      'engineer@example.com',
+      {
+        eventId: 'event-1',
+        incidentId: 'cmupoceod000jhf6kulz5kzjp',
+        organizationId: 'org-1',
+        alertName: 'Checkout API 5xx spike',
+        severity: 'CRITICAL',
+        application: 'checkout-api',
+        environment: 'production',
+        resource: 'i-123',
+        value: '8.7%',
+        startedAt: '2026-10-01T15:00:00.000Z',
+        dashboardUrl: 'https://wakeops.example/incidents/1',
+      },
+    );
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload.subject).toContain('INC-ULZ5KZJP');
+    expect(payload.html).toContain('INC-ULZ5KZJP');
+    expect(payload.html).not.toContain('cmupoceod000jhf6kulz5kzjp');
+    expect(payload.html).toContain('background:#b6fb45');
+    expect(payload.html).toContain('Open incident</a>');
   });
 });

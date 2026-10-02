@@ -77,22 +77,29 @@ export function incidentReference(id: string) {
 }
 
 function emailHtml(event: IncidentNotification) {
+  const reference = incidentReference(event.incidentId);
+  const severity = event.severity.toUpperCase();
+  const severityStyle =
+    severity === 'CRITICAL'
+      ? 'background:#321416;color:#ff8f98;border:1px solid #7f1d1d'
+      : severity === 'WARNING'
+        ? 'background:#30250b;color:#facc15;border:1px solid #854d0e'
+        : 'background:#14200b;color:#b6fb45;border:1px solid #3f6212';
   const rows = [
-    ['Severity', event.severity],
     ['Application', event.application],
     ['Environment', event.environment],
     ['Resource', event.resource],
     ['Value', event.value ?? 'Not provided'],
     ['Started', new Date(event.startedAt).toISOString()],
-    ['Incident ID', event.incidentId],
+    ['Incident', reference],
   ];
   const table = rows
     .map(
       ([label, value]) =>
-        `<tr><td style="padding:8px;color:#71717a">${escapeHtml(label ?? '')}</td><td style="padding:8px;color:#18181b">${escapeHtml(value ?? '')}</td></tr>`,
+        `<tr><td style="padding:11px 0;color:#8b96a9;font-size:13px;width:42%">${escapeHtml(label ?? '')}</td><td style="padding:11px 0;color:#f8fafc;font-size:14px;font-weight:600">${escapeHtml(value ?? '')}</td></tr>`,
     )
     .join('');
-  return `<div style="font-family:Arial,sans-serif;max-width:620px"><h1 style="font-size:22px">${escapeHtml(event.alertName)}</h1><p>WakeOps detected an incident and started the response workflow.</p><table style="border-collapse:collapse;width:100%">${table}</table><p><a href="${escapeHtml(event.dashboardUrl)}">Open incident</a></p></div>`;
+  return `<div style="margin:0;padding:32px 16px;background:#080a08;font-family:Arial,sans-serif;color:#f8fafc"><div style="max-width:620px;margin:0 auto;background:#101310;border:1px solid #283127;border-radius:16px;overflow:hidden"><div style="padding:24px 28px;border-bottom:1px solid #283127"><div style="font-size:12px;font-weight:700;letter-spacing:1.8px;color:#b6fb45">WAKEOPS / INCIDENT RESPONSE</div><div style="margin-top:18px"><span style="display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.8px;${severityStyle}">${escapeHtml(severity)}</span></div><h1 style="margin:16px 0 0;font-size:26px;line-height:1.25;color:#ffffff">${escapeHtml(event.alertName)}</h1><p style="margin:10px 0 0;color:#aab4c5;font-size:15px;line-height:1.55">WakeOps received a Grafana alert and started the incident response workflow.</p></div><div style="padding:12px 28px 24px"><table style="border-collapse:collapse;width:100%"><tbody>${table}</tbody></table><div style="margin-top:18px;padding-top:22px;border-top:1px solid #283127"><a href="${escapeHtml(event.dashboardUrl)}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#b6fb45;color:#071003;font-size:14px;font-weight:700;text-decoration:none">Open incident</a></div></div></div></div>`;
 }
 
 export function createResendEmailProvider(apiKey: string, from: string): EmailProvider {
@@ -108,7 +115,7 @@ export function createResendEmailProvider(apiKey: string, from: string): EmailPr
         body: JSON.stringify({
           from,
           to: [destination],
-          subject: `[${event.severity}] ${event.alertName} - ${event.application}`,
+          subject: `[${event.severity.toUpperCase()}] ${incidentReference(event.incidentId)} · ${event.alertName}`,
           html: emailHtml(event),
         }),
       });
