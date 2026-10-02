@@ -6,8 +6,22 @@ function reducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+function digitTrack(from: number, to: number, direction: 1 | -1) {
+  if (from === to) return [to];
+
+  const digits = [from];
+  let current = from;
+  while (current !== to) {
+    current = (current + direction + 10) % 10;
+    digits.push(current);
+  }
+  return digits;
+}
+
 export function OdometerNumber({ value, className = '' }: { value: number; className?: string }) {
+  const [previousValue, setPreviousValue] = useState(0);
   const [displayedValue, setDisplayedValue] = useState(value);
+  const [direction, setDirection] = useState<1 | -1>(1);
   const [rolling, setRolling] = useState(false);
   const mounted = useRef(false);
 
@@ -31,6 +45,8 @@ export function OdometerNumber({ value, className = '' }: { value: number; class
 
     setRolling(false);
     valueFrame = requestAnimationFrame(() => {
+      setPreviousValue(displayedValue);
+      setDirection(value >= displayedValue ? 1 : -1);
       setDisplayedValue(value);
       rollFrame = requestAnimationFrame(() => setRolling(true));
     });
@@ -41,26 +57,30 @@ export function OdometerNumber({ value, className = '' }: { value: number; class
     };
   }, [displayedValue, value]);
 
+  const width = Math.max(String(previousValue).length, String(displayedValue).length);
+  const previousDigits = String(previousValue).padStart(width, '0');
+  const displayedDigits = String(displayedValue).padStart(width, '0');
+
   return (
     <span className={`inline-flex font-mono leading-none tabular-nums ${className}`}>
       <span className="sr-only">{displayedValue}</span>
       <span aria-hidden="true" className="inline-flex">
-        {String(displayedValue)
+        {displayedDigits
           .split('')
           .map((character, index) => {
-            const digit = Number(character);
+            const track = digitTrack(Number(previousDigits[index]), Number(character), direction);
             return (
               <span key={`${displayedValue}-${index}`} className="h-[1em] overflow-hidden">
                 <span
                   className="flex flex-col transition-transform duration-700 ease-out will-change-transform"
                   style={{
-                    transform: rolling ? `translateY(-${digit}em)` : 'translateY(0)',
+                    transform: rolling ? `translateY(-${track.length - 1}em)` : 'translateY(0)',
                     transitionDelay: `${index * 75}ms`,
                   }}
                 >
-                  {Array.from({ length: digit + 1 }, (_, step) => (
-                    <span key={step} className="h-[1em]">
-                      {step}
+                  {track.map((digit, step) => (
+                    <span key={`${digit}-${step}`} className="h-[1em]">
+                      {digit}
                     </span>
                   ))}
                 </span>
