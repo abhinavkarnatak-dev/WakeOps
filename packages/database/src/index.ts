@@ -6,8 +6,6 @@ const globalDatabase = globalThis as unknown as {
 
 export const database = globalDatabase.wakeOpsPrisma ?? new PrismaClient();
 
-if (process.env.NODE_ENV !== 'production') {
-  globalDatabase.wakeOpsPrisma = database;
-}
+globalDatabase.wakeOpsPrisma = database;
 
 export { MembershipRole, Prisma, PrismaClient } from '@prisma/client';
