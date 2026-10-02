@@ -4,6 +4,7 @@ import {
   createResendEmailProvider,
   decryptSecret,
   encryptSecret,
+  formatIncidentStartTime,
   incidentReference,
   slackClientMessageId,
   slackIncidentMessage,
@@ -21,6 +22,10 @@ describe('notification helpers', () => {
     const first = slackClientMessageId('incident-1');
     expect(first).toBe(slackClientMessageId('incident-1'));
     expect(first).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('formats incident start times in IST', () => {
+    expect(formatIncidentStartTime('2026-10-01T15:00:00.000Z')).toBe('1 Oct 2026, 8:30 pm IST');
   });
 
   it('creates a clean Slack incident message', () => {
@@ -70,5 +75,6 @@ describe('notification helpers', () => {
     expect(payload.html).not.toContain('cmupoceod000jhf6kulz5kzjp');
     expect(payload.html).toContain('background:#b6fb45');
     expect(payload.html).toContain('Open incident</a>');
+    expect(payload.html).toContain('1 Oct 2026, 8:30 pm IST');
   });
 });

@@ -76,6 +76,14 @@ export function incidentReference(id: string) {
   return `INC-${id.slice(-8).toUpperCase()}`;
 }
 
+export function formatIncidentStartTime(value: string) {
+  return `${new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Kolkata',
+  }).format(new Date(value))} IST`;
+}
+
 function emailHtml(event: IncidentNotification) {
   const reference = incidentReference(event.incidentId);
   const severity = event.severity.toUpperCase();
@@ -90,7 +98,7 @@ function emailHtml(event: IncidentNotification) {
     ['Environment', event.environment],
     ['Resource', event.resource],
     ['Value', event.value ?? 'Not provided'],
-    ['Started', new Date(event.startedAt).toISOString()],
+    ['Started', formatIncidentStartTime(event.startedAt)],
     ['Incident', reference],
   ];
   const table = rows
