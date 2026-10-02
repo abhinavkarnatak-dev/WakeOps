@@ -6,96 +6,100 @@ function reducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-function digitTrack(from: number, to: number, direction: 1 | -1) {
-  if (from === to) return [to];
-
-  const digits = [from];
-  let current = from;
-  while (current !== to) {
-    current = (current + direction + 10) % 10;
-    digits.push(current);
-  }
-  return direction === 1 ? digits : digits.reverse();
-}
+type OdometerMotion = {
+  from: number;
+  to: number;
+  direction: 1 | -1;
+  rolling: boolean;
+};
 
 export function OdometerNumber({ value, className = '' }: { value: number; className?: string }) {
-  const [previousValue, setPreviousValue] = useState(0);
-  const [displayedValue, setDisplayedValue] = useState(value);
-  const [direction, setDirection] = useState<1 | -1>(1);
-  const [rolling, setRolling] = useState(false);
+  const [motion, setMotion] = useState<OdometerMotion>({
+    from: 0,
+    to: value,
+    direction: 1,
+    rolling: false,
+  });
+  const currentValue = useRef(value);
   const mounted = useRef(false);
 
   useEffect(() => {
-    let valueFrame = 0;
+    let resetFrame = 0;
     let rollFrame = 0;
 
     if (reducedMotion()) {
-      setDisplayedValue(value);
-      setRolling(true);
-      return;
+      currentValue.current = value;
+      resetFrame = requestAnimationFrame(() => {
+        setMotion({ from: value, to: value, direction: 1, rolling: true });
+      });
+      return () => cancelAnimationFrame(resetFrame);
     }
 
+    let nextMotion: OdometerMotion | null = null;
     if (!mounted.current) {
       mounted.current = true;
-      rollFrame = requestAnimationFrame(() => setRolling(true));
-      return () => cancelAnimationFrame(rollFrame);
+    } else {
+      const from = currentValue.current;
+      if (from === value) return;
+
+      currentValue.current = value;
+      nextMotion = {
+        from,
+        to: value,
+        direction: value >= from ? 1 : -1,
+        rolling: false,
+      };
     }
 
-    if (value === displayedValue) return;
-
-    setRolling(false);
-    valueFrame = requestAnimationFrame(() => {
-      setPreviousValue(displayedValue);
-      setDirection(value >= displayedValue ? 1 : -1);
-      setDisplayedValue(value);
-      rollFrame = requestAnimationFrame(() => setRolling(true));
+    resetFrame = requestAnimationFrame(() => {
+      if (nextMotion) setMotion(nextMotion);
+      rollFrame = requestAnimationFrame(() => {
+        setMotion((current) =>
+          current.to === value ? { ...current, rolling: true } : current,
+        );
+      });
     });
 
     return () => {
-      cancelAnimationFrame(valueFrame);
+      cancelAnimationFrame(resetFrame);
       cancelAnimationFrame(rollFrame);
     };
-  }, [displayedValue, value]);
+  }, [value]);
 
-  const width = Math.max(String(previousValue).length, String(displayedValue).length);
-  const previousDigits = String(previousValue).padStart(width, '0');
-  const displayedDigits = String(displayedValue).padStart(width, '0');
+  const fromText = String(motion.from);
+  const toText = String(motion.to);
+  const sizingText = fromText.length > toText.length ? fromText : toText;
+  const fromTransform = motion.rolling
+    ? motion.direction === 1
+      ? 'translateY(-100%)'
+      : 'translateY(100%)'
+    : 'translateY(0)';
+  const toTransform = motion.rolling
+    ? 'translateY(0)'
+    : motion.direction === 1
+      ? 'translateY(100%)'
+      : 'translateY(-100%)';
+  const transition = motion.rolling
+    ? 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1)'
+    : 'none';
 
   return (
     <span className={`inline-flex font-mono leading-none tabular-nums ${className}`}>
-      <span className="sr-only">{displayedValue}</span>
-      <span aria-hidden="true" className="inline-flex">
-        {displayedDigits
-          .split('')
-          .map((character, index) => {
-            const track = digitTrack(Number(previousDigits[index]), Number(character), direction);
-            const distance = track.length - 1;
-            const transform = rolling
-              ? direction === 1
-                ? `translateY(-${distance}em)`
-                : 'translateY(0)'
-              : direction === 1
-                ? 'translateY(0)'
-                : `translateY(-${distance}em)`;
-            return (
-              <span key={`${displayedValue}-${index}`} className="h-[1em] overflow-hidden">
-                <span
-                  className="flex flex-col will-change-transform"
-                  style={{
-                    transform,
-                    transitionDelay: `${index * 75}ms`,
-                    transition: rolling ? 'transform 700ms ease-out' : 'none',
-                  }}
-                >
-                  {track.map((digit, step) => (
-                    <span key={`${digit}-${step}`} className="h-[1em]">
-                      {digit}
-                    </span>
-                  ))}
-                </span>
-              </span>
-            );
-          })}
+      <span className="sr-only">{motion.to}</span>
+      <span aria-hidden="true" className="relative inline-grid h-[1em] overflow-hidden text-right">
+        <span className="invisible col-start-1 row-start-1">{sizingText}</span>
+        <span
+          className="absolute inset-0 flex items-center justify-end will-change-transform"
+          style={{ transform: fromTransform, transition }}
+        >
+          {fromText}
+        </span>
+        <span
+          className="absolute inset-0 flex items-center justify-end will-change-transform"
+          style={{ transform: toTransform, transition }}
+        >
+          {toText}
+        </span>
       </span>
     </span>
   );
