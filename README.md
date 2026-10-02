@@ -25,7 +25,6 @@ plays a fixed incident message before the workflow records the call result.
 - Organization onboarding for engineers, applications, environments, hosts, and service deployments.
 - One host with multiple services, with an on-call and optional senior assignment per service.
 - Grafana webhook connection with organization-specific Bearer secret generation and hash-only storage.
-- Grafana predefined and custom test receipt inspection.
 - Grafana alert normalization, label mapping, fingerprinting, and duplicate delivery protection.
 - PostgreSQL incident records, alert events, call attempts, notification attempts, and audit events.
 - Temporal workflow with durable waiting, on-call retry, senior escalation, and completion on acknowledgement.
@@ -122,19 +121,28 @@ that provider until it is configured.
 | --------------------- | ------------------------------------------------------------------------------------------------------ |
 | Core                  | NODE_ENV, PORT, LOG_LEVEL, WEB_URL, API_URL, WEBHOOK_PUBLIC_BASE_URL                                   |
 | PostgreSQL            | DATABASE_URL                                                                                           |
-| Google and Auth.js    | AUTH_SECRET, AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET                                                        |
+| Google and Auth.js    | AUTH_SECRET, AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET, AUTH_TRUST_HOST                                       |
 | Temporal Cloud        | TEMPORAL_ADDRESS, TEMPORAL_NAMESPACE, TEMPORAL_TASK_QUEUE, TEMPORAL_API_KEY                            |
 | RabbitMQ              | AMQP_URL                                                                                               |
 | Redis support         | REDIS_URL                                                                                              |
 | Credential encryption | ENCRYPTION_KEY                                                                                         |
 | Twilio                | TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, TWILIO_WEBHOOK_BASE_URL, TWILIO_TRIAL_MODE |
 | Resend email          | RESEND_API_KEY, EMAIL_FROM                                                                             |
-| Slack OAuth           | SLACK_CLIENT_ID, SLACK_CLIENT_SECRET, SLACK_SIGNING_SECRET, SLACK_REDIRECT_URI                         |
+| Slack OAuth           | SLACK_CLIENT_ID, SLACK_CLIENT_SECRET, SLACK_REDIRECT_URI                                               |
 
 WEBHOOK_PUBLIC_BASE_URL is used to show the Grafana webhook URL in the dashboard. Grafana and
-Twilio need an HTTPS URL that can reach the API. During local development, a quick Cloudflare
-tunnel can expose port 4000. Its URL changes after a restart, so update the environment and the
-Grafana contact point when that happens. A hosted Render API should use its permanent public URL.
+Twilio need an HTTPS URL that can reach the API. The deployed application uses permanent custom
+domains, so production webhooks and OAuth callbacks do not depend on a temporary tunnel:
+
+    WEB_URL=https://your-web-domain.example
+    API_URL=https://your-api-domain.example
+    WEBHOOK_PUBLIC_BASE_URL=https://your-api-domain.example
+    TWILIO_WEBHOOK_BASE_URL=https://your-api-domain.example
+    SLACK_REDIRECT_URI=https://your-web-domain.example/api/integrations/slack/callback
+
+AUTH_TRUST_HOST should be true in the deployed Vercel environment. Use the Supabase transaction
+pooler URL for the Vercel DATABASE_URL so serverless requests do not exhaust session-mode clients.
+Local development still uses the localhost values from .env.example.
 
 ## Grafana setup
 
@@ -148,8 +156,8 @@ Grafana is the only monitoring system directly integrated with WakeOps.
 6. Set the method to POST.
 7. Set the authentication scheme to Bearer.
 8. Paste the WakeOps secret into the credentials field.
-9. Save the contact point and use Grafana's predefined test notification.
-10. Confirm the WakeOps integration test panel receives the payload.
+9. Save the contact point and send a controlled notification with labels matching a saved WakeOps deployment.
+10. Confirm that the incident appears in Overview and Incidents.
 
 For a custom test or production alert, use labels that match the saved deployment:
 
@@ -210,15 +218,23 @@ the call.
 
 ## Deployment notes
 
-- Deploy the Next.js web app to Vercel.
-- Deploy the API and worker as separate Render processes from the same repository.
-- Use Neon or another managed PostgreSQL provider.
-- Use Temporal Cloud for the workflow service.
-- Use a RabbitMQ-compatible hosted broker if notifications are enabled.
-- Use managed Redis only for future cache or rate limiting needs.
-- Set permanent HTTPS URLs in production. Do not use a quick local tunnel for a deployed Grafana contact point.
-- Add GET /health to an uptime monitor such as UptimeRobot. This helps a free service stay awake but
-  does not make it production-grade.
+The current deployed arrangement is:
+
+- Vercel hosts the Next.js web app behind its configured permanent web domain.
+- Render hosts the Express API behind its configured permanent API domain.
+- Supabase provides PostgreSQL. Vercel uses its transaction pooler connection.
+- Temporal Cloud stores workflow history, timers, and task queues.
+- CloudAMQP provides the RabbitMQ-compatible notification broker.
+- The worker currently runs as an independent local process with npm run dev -w @wakeops/workers.
+  It connects outbound to Temporal Cloud, Supabase, CloudAMQP, and Twilio, so it does not need a
+  public URL or tunnel.
+- UptimeRobot monitors GET /health on the API domain.
+- Redis is optional and remains reserved for future cache or rate-limiting work.
+
+For production reliability, move the worker from the local machine to an always-on background
+service. Keep it separate from the API process so workflow polling and notification consumers do
+not compete with webhook and callback traffic. The permanent web and API domains should remain the
+configured Google OAuth, Slack OAuth, Grafana webhook, and Twilio callback origins.
 
 ## Current limitations
 
@@ -228,5 +244,6 @@ the call.
 - Calls use a fixed incident message and do not provide an interactive conversation.
 - A completed answered call means acknowledgement for the current workflow. It does not prove the incident is fixed.
 - Trial Twilio accounts may restrict destination numbers and callback behavior.
-- Quick Cloudflare tunnel URLs change after restart.
-- Render free instances can restart and active calls would not be production reliable.
+- The current worker depends on the local machine remaining online. If it stops, Temporal retains
+  workflow state, but calls and queued notification work will not progress until a worker reconnects.
+- Free-tier API instances can cold start or restart and are not suitable for strict production availability.
