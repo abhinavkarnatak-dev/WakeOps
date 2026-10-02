@@ -15,7 +15,7 @@ function digitTrack(from: number, to: number, direction: 1 | -1) {
     current = (current + direction + 10) % 10;
     digits.push(current);
   }
-  return digits;
+  return direction === 1 ? digits : digits.reverse();
 }
 
 export function OdometerNumber({ value, className = '' }: { value: number; className?: string }) {
@@ -69,13 +69,22 @@ export function OdometerNumber({ value, className = '' }: { value: number; class
           .split('')
           .map((character, index) => {
             const track = digitTrack(Number(previousDigits[index]), Number(character), direction);
+            const distance = track.length - 1;
+            const transform = rolling
+              ? direction === 1
+                ? `translateY(-${distance}em)`
+                : 'translateY(0)'
+              : direction === 1
+                ? 'translateY(0)'
+                : `translateY(-${distance}em)`;
             return (
               <span key={`${displayedValue}-${index}`} className="h-[1em] overflow-hidden">
                 <span
-                  className="flex flex-col transition-transform duration-700 ease-out will-change-transform"
+                  className="flex flex-col will-change-transform"
                   style={{
-                    transform: rolling ? `translateY(-${track.length - 1}em)` : 'translateY(0)',
+                    transform,
                     transitionDelay: `${index * 75}ms`,
+                    transition: rolling ? 'transform 700ms ease-out' : 'none',
                   }}
                 >
                   {track.map((digit, step) => (
