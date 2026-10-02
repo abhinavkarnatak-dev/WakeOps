@@ -7,34 +7,50 @@ function reducedMotion() {
 }
 
 export function OdometerNumber({ value, className = '' }: { value: number; className?: string }) {
+  const [displayedValue, setDisplayedValue] = useState(value);
   const [rolling, setRolling] = useState(false);
+  const mounted = useRef(false);
 
   useEffect(() => {
-    let startFrame = 0;
-    const resetFrame = requestAnimationFrame(() => {
-      if (reducedMotion()) {
-        setRolling(true);
-        return;
-      }
-      setRolling(false);
-      startFrame = requestAnimationFrame(() => setRolling(true));
+    let valueFrame = 0;
+    let rollFrame = 0;
+
+    if (reducedMotion()) {
+      setDisplayedValue(value);
+      setRolling(true);
+      return;
+    }
+
+    if (!mounted.current) {
+      mounted.current = true;
+      rollFrame = requestAnimationFrame(() => setRolling(true));
+      return () => cancelAnimationFrame(rollFrame);
+    }
+
+    if (value === displayedValue) return;
+
+    setRolling(false);
+    valueFrame = requestAnimationFrame(() => {
+      setDisplayedValue(value);
+      rollFrame = requestAnimationFrame(() => setRolling(true));
     });
+
     return () => {
-      cancelAnimationFrame(resetFrame);
-      cancelAnimationFrame(startFrame);
+      cancelAnimationFrame(valueFrame);
+      cancelAnimationFrame(rollFrame);
     };
-  }, [value]);
+  }, [displayedValue, value]);
 
   return (
     <span className={`inline-flex font-mono leading-none tabular-nums ${className}`}>
-      <span className="sr-only">{value}</span>
+      <span className="sr-only">{displayedValue}</span>
       <span aria-hidden="true" className="inline-flex">
-        {String(value)
+        {String(displayedValue)
           .split('')
           .map((character, index) => {
             const digit = Number(character);
             return (
-              <span key={`${value}-${index}`} className="h-[1em] overflow-hidden">
+              <span key={`${displayedValue}-${index}`} className="h-[1em] overflow-hidden">
                 <span
                   className="flex flex-col transition-transform duration-700 ease-out will-change-transform"
                   style={{

@@ -2,11 +2,6 @@ import { database } from '@wakeops/database';
 import { requireOrganization } from '@/lib/organization';
 import { GrafanaConnection } from './grafana-connection';
 import { CopyValueButton } from '@/components/copy-value-button';
-import {
-  GrafanaTestStatus,
-  type GrafanaPayloadPreview,
-  type GrafanaProcessingResult,
-} from './grafana-test-status';
 import { EmailConnection, SlackConnection } from './notification-connections';
 import { IntegrationCard } from './integration-card';
 import { slackChannels } from '@/lib/slack';
@@ -17,57 +12,10 @@ export default async function IntegrationsPage({
   searchParams: Promise<{ slack?: string }>;
 }) {
   const membership = await requireOrganization();
-  const [integration, receipt, processing, sampleMapping, slackInstallation] = await Promise.all([
+  const [integration, slackInstallation] = await Promise.all([
     database.grafanaIntegration.findUnique({
       where: { organizationId: membership.organizationId },
       select: { secretHint: true, lastVerifiedAt: true },
-    }),
-    database.monitoringWebhookTest.findFirst({
-      where: { organizationId: membership.organizationId, source: 'GRAFANA' },
-      orderBy: { receivedAt: 'desc' },
-      select: {
-        id: true,
-        receiver: true,
-        status: true,
-        alertCount: true,
-        alertName: true,
-        payloadPreview: true,
-        receivedAt: true,
-      },
-    }),
-    database.alertEvent.findFirst({
-      where: { organizationId: membership.organizationId, source: 'GRAFANA' },
-      orderBy: { receivedAt: 'desc' },
-      select: {
-        id: true,
-        processingStatus: true,
-        mappingError: true,
-        alertName: true,
-        resourceIdentifier: true,
-        service: true,
-        environment: true,
-        severity: true,
-        receivedAt: true,
-        incident: {
-          select: {
-            id: true,
-            status: true,
-            metadata: true,
-            application: { select: { name: true } },
-            environment: { select: { name: true } },
-            resource: { select: { name: true, externalIdentifier: true } },
-          },
-        },
-      },
-    }),
-    database.resourceMapping.findFirst({
-      where: { organizationId: membership.organizationId },
-      orderBy: { createdAt: 'asc' },
-      select: {
-        resource: { select: { externalIdentifier: true } },
-        application: { select: { name: true } },
-        environment: { select: { name: true } },
-      },
     }),
     database.slackInstallation.findUnique({
       where: { organizationId: membership.organizationId },
@@ -188,90 +136,6 @@ export default async function IntegrationsPage({
         </IntegrationCard>
       </div>
 
-      <section className="mt-10 border-t border-white/8 pt-10">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lime-300">
-              Integration testing
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
-              Grafana webhook test
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-              This does not create the Grafana connection. It only confirms that a test payload
-              reached WakeOps and shows whether its labels mapped to a service.
-            </p>
-          </div>
-          <span className="w-fit rounded-full border border-white/10 bg-white/[0.025] px-3 py-1 text-xs text-zinc-400">
-            Separate test area
-          </span>
-        </div>
-
-        <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-5">
-              <h3 className="font-semibold text-white">Send a connectivity test</h3>
-              <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-zinc-500">
-                <li>Open the connected contact point in Grafana.</li>
-                <li>Click Test and select Predefined.</li>
-                <li>Send the test notification.</li>
-                <li>WakeOps will update the receipt panel automatically.</li>
-              </ol>
-            </div>
-            <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-5">
-              <h3 className="font-semibold text-white">Test service mapping</h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">
-                Select Custom in Grafana and use labels matching a saved WakeOps deployment.
-              </p>
-              {!sampleMapping && (
-                <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/8 p-3 text-sm text-amber-200">
-                  Add a host and service deployment before testing mapping.
-                </p>
-              )}
-              <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-                {[
-                  ['alertname', 'WakeOpsLabelTest'],
-                  ['service', sampleMapping?.application.name ?? 'your-service-name'],
-                  ['environment', sampleMapping?.environment.name ?? 'your-environment-name'],
-                  [
-                    'instance',
-                    sampleMapping?.resource.externalIdentifier ?? 'your-host-identifier',
-                  ],
-                  ['severity', 'critical'],
-                ].map(([key, value]) => (
-                  <div key={key} className="rounded-lg border border-white/6 bg-black/25 p-3">
-                    <dt className="font-mono text-[11px] text-lime-300">{key}</dt>
-                    <dd className="mt-1 break-words text-xs text-zinc-400">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-5">
-            <h3 className="mb-4 font-semibold text-white">Latest received test</h3>
-            <GrafanaTestStatus
-              initialReceipt={
-                receipt
-                  ? {
-                      ...receipt,
-                      payloadPreview: receipt.payloadPreview as GrafanaPayloadPreview | null,
-                      receivedAt: receipt.receivedAt.toISOString(),
-                    }
-                  : null
-              }
-              initialProcessing={
-                processing
-                  ? ({
-                      ...processing,
-                      receivedAt: processing.receivedAt.toISOString(),
-                    } as GrafanaProcessingResult)
-                  : null
-              }
-            />
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
