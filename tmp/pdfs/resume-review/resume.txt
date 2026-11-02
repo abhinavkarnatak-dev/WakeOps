@@ -1,0 +1,81 @@
+                                     Abhinav Karnatak
+
+                                                              Software Engineer | Full Stack & Applied AI
+
+                                               abhinavkarnatak2004@gmail.com · +91-7310988194 · linkedin.com/in/abhinavkarnatak
+                                                                   github.com/abhinavkarnatak-dev · abhinavkarnatak.com
+
+Software engineer building full-stack applications and AI agents using TypeScript, Python, React, Node.js, and LangGraph. Built and deployed
+products involving secure code execution, GitHub automation, real-time communication, payments, and cloud infrastructure. I enjoy taking
+ownership of problems and building practical systems from idea to deployment.
+
+SKILLS
+
+AI Engineering: LangGraph, LangChain, RAG, Tool Calling, LLM API Integration, Prompt Engineering,
+Languages: Python, TypeScript, JavaScript, C++
+Backend & Integrations: Node.js, Express.js, REST APIs, OAuth 2.0, JWT, WebSockets, Socket.io, RabbitMQ, Redis, Razorpay Payment Gateway
+Databases: MongoDB, PostgreSQL, Prisma
+Cloud & DevOps: Docker, AWS EC2, AWS S3, E2B, Nginx
+Frontend Technologies: React.js, Next.js, React Native, Tailwind CSS, Framer Motion
+
+PROJECTS
+
+Nimbus: Cloud Coding Agent 
+  · Built a cloud coding agent using TypeScript, Node.js, React, MongoDB, Redis, and LangGraph that connects to GitHub repositories, understands
+     and navigates codebases, answers repository-level queries, and completes coding tasks.
+
+  · Created an iterative LangGraph agent workflow that can inspect files, modify code, run commands, and validate changes using build, lint, and
+     test checks.
+
+  · Executed AI-generated commands inside isolated E2B sandboxes while keeping GitHub credentials in the trusted backend, which validates
+     changes and creates pull requests.
+
+YapIt: Real-Time Microservices Chat Application 
+  · Built a real-time chat application using Next.js, Node.js, Socket.io, and MongoDB, with OTP-based authentication and WebSocket communication.
+  · Split the backend into User, Chat, and Mail microservices, using RabbitMQ for asynchronous email delivery and account-cleanup tasks.
+  · Containerized the services using Docker Compose and deployed them on AWS EC2 behind Nginx, with images stored in AWS S3 and OTPs
+     temporarily stored in Redis.
+
+Revuea: Empowering Honest Feedback with Anonymity 
+
+  · Built a full-stack anonymous feedback platform using React, Node.js, PostgreSQL, and Prisma.
+  · Implemented OTP-based authentication and an analytics dashboard for visualizing feedback data.
+  · Integrated Gemini to summarize large sets of feedback and added CSV export for external analysis.
+
+PixScribe: SaaS Text-to-Image Generator Web App 
+  · Built a credit-based text-to-image application using React, Node.js, Express, and MongoDB.
+  · Integrated Razorpay with server-side payment verification and atomic credit updates to prevent incorrect account balances.
+  · Created a responsive interface using Tailwind CSS and Framer Motion.
+
+WORK EXPERIENCE
+
+Analyst                                                                                         Sep 2025 - May 2026
+
+Capgemini                                                                                       Mumbai, Maharashtra
+
+· Resolved network and connectivity incidents across enterprise Linux and Windows environments while managing assigned support tickets within
+
+operational timelines.
+
+· Monitored system health, investigated recurring issues, and coordinated with relevant teams when incidents required escalation.
+
+Data Engineer Intern                                                                            Jun 2024 - Jul 2024
+
+HERE Technologies                                                                               Remote
+
+· Built custom Python web crawlers using Scrapy to scrape store locations from retail websites with varying HTML layouts, scheduling automated
+
+runs that cut manual effort by 30%.
+
+· Documented the workflow and codebase to make it easier to maintain and update in the future.
+
+EDUCATION
+
+B.Tech Computer Science and Engineering                                                         Aug 2021 - May 2025
+
+University Of Petroleum and Energy Studies
+
+· Served as the Student Placement Representative (SPR), coordinating communication between the placement cell and students during campus
+
+recruitment activities.
+

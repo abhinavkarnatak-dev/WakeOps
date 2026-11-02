@@ -28,33 +28,45 @@ const callTone: Record<string, string> = {
 export function IncidentStatus({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-[0.12em] ${incidentTone[status] ?? incidentTone.OPEN}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${incidentTone[status] ?? incidentTone.OPEN}`}
     >
-      <span className="size-1.5 rounded-full bg-current" />
-      {status}
+      <span className="relative flex size-1.5">
+        {(status === 'OPEN' || status === 'NOTIFYING') && (
+          <span className="absolute inset-0 animate-ping rounded-full bg-current opacity-60" />
+        )}
+        <span className="relative size-1.5 rounded-full bg-current" />
+      </span>
+      {humanize(status)}
     </span>
   );
 }
 
+function humanize(value: string) {
+  const text = value.replaceAll('_', ' ').toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 export function Severity({ severity }: { severity: string }) {
   return (
-    <span className={`text-[10px] font-bold tracking-[0.14em] ${severityTone[severity] ?? ''}`}>
-      {severity}
-    </span>
+    <span className={`font-medium ${severityTone[severity] ?? ''}`}>{humanize(severity)}</span>
   );
 }
 
 export function CallStatus({ status }: { status: string }) {
   return (
-    <span className={`text-xs font-semibold ${callTone[status] ?? 'text-zinc-400'}`}>
-      {status.replaceAll('_', ' ')}
+    <span className={`text-sm font-medium ${callTone[status] ?? 'text-zinc-400'}`}>
+      {humanize(status)}
     </span>
   );
 }
 
 export function Panel({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-white/8 bg-[#0b0c0c] ${className}`}>{children}</div>
+    <div
+      className={`rounded-[22px] border border-white/[0.07] bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.008))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${className}`}
+    >
+      {children}
+    </div>
   );
 }
 

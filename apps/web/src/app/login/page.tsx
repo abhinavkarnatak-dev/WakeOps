@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/auth';
+import { AuthShell } from '@/components/auth-shell';
 import { GoogleSignIn } from '@/components/google-sign-in';
 
 export const metadata: Metadata = {
@@ -14,15 +15,31 @@ export default async function LoginPage() {
   if (session) redirect('/onboarding');
 
   return (
-    <main className="grid min-h-screen place-items-center px-6">
-      <section className="w-full max-w-md rounded-2xl border border-white/8 bg-[#0b0c0c] p-8 shadow-2xl shadow-black/30">
-        <p className="text-sm font-semibold text-lime-300">WakeOps</p>
-        <h1 className="mt-2 text-3xl font-bold">Sign in</h1>
-        <p className="mt-3 mb-8 text-zinc-400">
-          Use Google to create your account. Your organization is created in the next step.
-        </p>
+    <AuthShell
+      aside={{
+        title: (
+          <>
+            The pager
+            <br />
+            goes off.
+            <br />
+            <span className="text-signal">You&apos;re covered.</span>
+          </>
+        ),
+        body: 'Map services to engineers once. WakeOps handles the calls, the retries and the escalation every time Grafana fires.',
+      }}
+    >
+      <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">Sign in</h1>
+      <p className="mt-4 text-base leading-7 text-zinc-400">
+        Use your Google account. New here? Your organization is set up right after.
+      </p>
+      <div className="mt-10">
         <GoogleSignIn />
-      </section>
-    </main>
+      </div>
+      <p className="mt-8 text-xs leading-5 text-zinc-600">
+        WakeOps uses your name and email to identify you to your team. Engineer phone numbers are
+        added separately during setup.
+      </p>
+    </AuthShell>
   );
 }

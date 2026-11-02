@@ -1,18 +1,59 @@
 import { database } from '@wakeops/database';
 import { maskPhoneNumber } from '@wakeops/shared';
 import type { ReactNode } from 'react';
+import { fieldClass, PageHeader } from '@/components/dashboard-ui';
 import { requireOrganization } from '@/lib/organization';
 import { SetupForm } from './setup-form';
 import { ContactFields } from './contact-fields';
 import { SavedRecord } from './saved-record';
 
-const fieldClass =
-  'w-full rounded-xl border border-white/10 bg-[#101111] px-3 py-2 text-zinc-100 outline-none transition focus:border-lime-300';
+function StepTitle({
+  step,
+  title,
+  hint,
+  done,
+}: {
+  step: number;
+  title: string;
+  hint: string;
+  done: boolean;
+}) {
+  return (
+    <div className="mb-6 flex items-start gap-4">
+      <span
+        className={`grid size-9 shrink-0 place-items-center rounded-full font-mono text-sm transition-colors ${
+          done ? 'bg-signal text-black' : 'border border-white/15 text-zinc-400'
+        }`}
+      >
+        {done ? (
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            className="size-4"
+            aria-label="Done"
+          >
+            <path d="m3.5 8.5 3 3 6-6.5" />
+          </svg>
+        ) : (
+          step
+        )}
+      </span>
+      <div>
+        <h2 className="text-lg font-semibold tracking-[-0.01em] text-white">{title}</h2>
+        <p className="mt-0.5 text-sm text-zinc-500">{hint}</p>
+      </div>
+    </div>
+  );
+}
+
+const card = 'rounded-[24px] border border-white/[0.07] bg-white/[0.015] p-6';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-2">
-      <span className="text-sm">{label}</span>
+      <span className="text-sm text-zinc-400">{label}</span>
       {children}
     </label>
   );
@@ -79,19 +120,24 @@ export default async function SetupPage() {
     environments.length > 0;
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-10">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lime-300">
-        Organization
-      </p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-        Services and on-call ownership
-      </h1>
-      <p className="mt-2 text-zinc-500">
-        Add contacts and services, then tell WakeOps who owns each monitored resource.
-      </p>
-      {!admin && <p className="mt-4 text-amber-300">Only admins can change this setup.</p>}
-      <section className="mt-8 grid gap-6 md:grid-cols-3">
-        <div className="rounded-2xl border border-white/8 bg-[#0b0c0c] p-5">
-          <h2 className="mb-4 text-xl font-semibold">1. Engineers</h2>
+      <PageHeader
+        kicker="Organization"
+        title="Who gets the call"
+        description="Add engineers and services, then attach each service to the host Grafana reports on. That mapping decides who WakeOps calls."
+      />
+      {!admin && (
+        <p className="mt-6 rounded-2xl border border-ring/20 bg-ring/[0.06] px-4 py-3 text-sm text-ring">
+          Only admins can change this setup.
+        </p>
+      )}
+      <section className="mt-10 grid gap-5 lg:grid-cols-3">
+        <div className={card}>
+          <StepTitle
+            step={1}
+            title="Engineers"
+            hint="People WakeOps can call"
+            done={engineers.length > 0}
+          />
           <SetupForm kind="engineer" disabled={!admin}>
             <ContactFields />
           </SetupForm>
@@ -119,8 +165,13 @@ export default async function SetupPage() {
             Contacts can receive calls without a WakeOps account.
           </p>
         </div>
-        <div className="rounded-2xl border border-white/8 bg-[#0b0c0c] p-5">
-          <h2 className="mb-4 text-xl font-semibold">2. Applications</h2>
+        <div className={card}>
+          <StepTitle
+            step={2}
+            title="Services"
+            hint="What your alerts are about"
+            done={applications.length > 0}
+          />
           <SetupForm kind="application" disabled={!admin}>
             <Field label="Service name">
               <input
@@ -157,8 +208,13 @@ export default async function SetupPage() {
             ))}
           </ul>
         </div>
-        <div className="rounded-2xl border border-white/8 bg-[#0b0c0c] p-5">
-          <h2 className="mb-4 text-xl font-semibold">3. Environments</h2>
+        <div className={card}>
+          <StepTitle
+            step={3}
+            title="Environments"
+            hint="Production, staging and so on"
+            done={environments.length > 0}
+          />
           <SetupForm kind="environment" disabled={!admin}>
             <Field label="Environment name">
               <input
@@ -196,8 +252,13 @@ export default async function SetupPage() {
           </ul>
         </div>
       </section>
-      <section className="mt-6 rounded-2xl border border-white/8 bg-[#0b0c0c] p-5">
-        <h2 className="mb-4 text-xl font-semibold">4. Add a host</h2>
+      <section className={`mt-5 ${card}`}>
+        <StepTitle
+          step={4}
+          title="Hosts"
+          hint="Machines Grafana reports on"
+          done={resources.length > 0}
+        />
         <SetupForm kind="host" disabled={!canCreateHost}>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Host name">
@@ -226,11 +287,16 @@ export default async function SetupPage() {
           monitoring alerts will send. Contacts are assigned when you attach a service below.
         </p>
       </section>
-      <section className="mt-6 rounded-2xl border border-white/8 bg-[#0b0c0c] p-5">
-        <h2 className="mb-4 text-xl font-semibold">5. Attach a service to a host</h2>
+      <section className={`mt-5 ${card}`}>
+        <StepTitle
+          step={5}
+          title="Attach a service to a host"
+          hint="This is the mapping that picks who gets called"
+          done={resources.some((resource) => resource.mappings.length > 0)}
+        />
         {!canDeploy && (
-          <p className="mb-4 text-sm text-amber-300">
-            Add a host, engineer, application and environment first.
+          <p className="mb-5 text-sm text-ring">
+            Add a host, engineer, service and environment first.
           </p>
         )}
         <SetupForm kind="deployment" disabled={!canDeploy}>
@@ -252,17 +318,18 @@ export default async function SetupPage() {
           alert identifies that service.
         </p>
       </section>
-      <section className="mt-8">
-        <h2 className="mb-4 text-xl font-semibold">Hosts and deployed services</h2>
+      <section className="mt-14">
+        <h2 className="mb-5 text-xl font-semibold tracking-[-0.02em] text-white">
+          Hosts and their services
+        </h2>
         {!resources.length ? (
-          <p className="text-zinc-500">No hosts added yet.</p>
+          <p className="rounded-[24px] border border-dashed border-white/10 px-6 py-12 text-center text-sm text-zinc-500">
+            No hosts yet. Add one above, then attach the services that run on it.
+          </p>
         ) : (
           <div className="space-y-5">
             {resources.map((resource) => (
-              <article
-                key={resource.id}
-                className="rounded-2xl border border-white/8 bg-[#0b0c0c] p-5"
-              >
+              <article key={resource.id} className={card}>
                 <ul>
                   <SavedRecord
                     kind="host"
@@ -302,7 +369,7 @@ export default async function SetupPage() {
                   />
                 </ul>
                 <div className="mt-4 border-t border-white/8 pt-4">
-                  <h3 className="font-medium">Services on this host</h3>
+                  <h3 className="text-sm text-zinc-400">Services on this host</h3>
                   {!resource.mappings.length ? (
                     <p className="mt-2 text-sm text-zinc-500">No services attached yet.</p>
                   ) : (
@@ -312,13 +379,22 @@ export default async function SetupPage() {
                           key={mapping.id}
                           className="flex items-start justify-between gap-4 py-3 text-sm"
                         >
-                          <div>
-                            <p className="font-medium">
-                              {mapping.application.name} - {mapping.environment.name}
+                          <div className="min-w-0">
+                            <p className="flex flex-wrap items-center gap-2 font-medium text-white">
+                              {mapping.application.name}
+                              <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs font-normal text-zinc-400">
+                                {mapping.environment.name}
+                              </span>
                             </p>
-                            <p className="mt-1 text-xs text-zinc-500">
-                              On-call: {mapping.assignment?.primaryEngineer.name ?? 'Unassigned'} / Senior:{' '}
-                              {mapping.assignment?.secondaryEngineer?.name ?? 'Unassigned'}
+                            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+                              <span>
+                                <span className="text-signal">On call</span>{' '}
+                                {mapping.assignment?.primaryEngineer.name ?? 'Unassigned'}
+                              </span>
+                              <span>
+                                <span className="text-zinc-300">Senior</span>{' '}
+                                {mapping.assignment?.secondaryEngineer?.name ?? 'Unassigned'}
+                              </span>
                             </p>
                           </div>
                           {admin && (

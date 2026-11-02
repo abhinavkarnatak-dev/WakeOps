@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Mono, Space_Grotesk } from 'next/font/google';
+import { Archivo, IBM_Plex_Mono, Space_Grotesk } from 'next/font/google';
 import type { ReactNode } from 'react';
 
 import './globals.css';
@@ -10,6 +10,12 @@ const webUrl = process.env.WEB_URL ?? 'http://localhost:3000';
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-space-grotesk',
+});
+
+const archivo = Archivo({
+  subsets: ['latin'],
+  variable: '--font-archivo',
+  axes: ['wdth'],
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -60,7 +66,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
+    <html
+      lang="en"
+      className={`${spaceGrotesk.variable} ${ibmPlexMono.variable} ${archivo.variable}`}
+    >
       <body>
         <ToastProvider>{children}</ToastProvider>
       </body>

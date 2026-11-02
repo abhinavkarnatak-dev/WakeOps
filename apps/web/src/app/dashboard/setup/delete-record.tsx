@@ -48,7 +48,11 @@ export function DeleteRecord({
             strokeWidth="1.8"
             className="size-4"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"
+            />
           </svg>
         ) : (
           'Delete'
@@ -63,7 +67,7 @@ export function DeleteRecord({
         onClick={(event) => {
           if (!pending && event.target === dialog.current) dialog.current.close();
         }}
-        className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-white/10 bg-[#0c0d0d] p-6 text-zinc-100 shadow-2xl backdrop:bg-black/75"
+        className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-md rounded-[28px] border border-white/10 bg-[#0a0c0b] p-7 text-zinc-100 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.95)] backdrop:bg-black/70 backdrop:backdrop-blur-sm"
       >
         <h2 id={headingId} className="text-xl font-semibold">
           Delete {kind}?

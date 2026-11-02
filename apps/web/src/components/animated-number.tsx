@@ -14,8 +14,10 @@ type OdometerMotion = {
 };
 
 export function OdometerNumber({ value, className = '' }: { value: number; className?: string }) {
+  // Start on the real value; only later changes roll. Starting at 0 left the
+  // number stuck at 0 when React re-ran the effect in development.
   const [motion, setMotion] = useState<OdometerMotion>({
-    from: 0,
+    from: value,
     to: value,
     direction: 1,
     rolling: false,
@@ -26,6 +28,7 @@ export function OdometerNumber({ value, className = '' }: { value: number; class
   useEffect(() => {
     let resetFrame = 0;
     let rollFrame = 0;
+    let settleTimer = 0;
 
     if (reducedMotion()) {
       currentValue.current = value;
@@ -54,15 +57,22 @@ export function OdometerNumber({ value, className = '' }: { value: number; class
     resetFrame = requestAnimationFrame(() => {
       if (nextMotion) setMotion(nextMotion);
       rollFrame = requestAnimationFrame(() => {
-        setMotion((current) =>
-          current.to === value ? { ...current, rolling: true } : current,
-        );
+        setMotion((current) => (current.to === value ? { ...current, rolling: true } : current));
+        // Once the roll lands, drop the old value so it stops reserving width
+        settleTimer = window.setTimeout(() => {
+          setMotion((current) =>
+            current.to === value
+              ? { from: value, to: value, direction: 1, rolling: false }
+              : current,
+          );
+        }, 700);
       });
     });
 
     return () => {
       cancelAnimationFrame(resetFrame);
       cancelAnimationFrame(rollFrame);
+      window.clearTimeout(settleTimer);
     };
   }, [value]);
 
@@ -79,23 +89,21 @@ export function OdometerNumber({ value, className = '' }: { value: number; class
     : motion.direction === 1
       ? 'translateY(100%)'
       : 'translateY(-100%)';
-  const transition = motion.rolling
-    ? 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1)'
-    : 'none';
+  const transition = motion.rolling ? 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1)' : 'none';
 
   return (
     <span className={`inline-flex font-mono leading-none tabular-nums ${className}`}>
       <span className="sr-only">{motion.to}</span>
-      <span aria-hidden="true" className="relative inline-grid h-[1em] overflow-hidden text-right">
+      <span aria-hidden="true" className="relative inline-grid h-[1em] overflow-hidden text-left">
         <span className="invisible col-start-1 row-start-1">{sizingText}</span>
         <span
-          className="absolute inset-0 flex items-center justify-end will-change-transform"
+          className="absolute inset-0 flex items-center justify-start will-change-transform"
           style={{ transform: fromTransform, transition }}
         >
           {fromText}
         </span>
         <span
-          className="absolute inset-0 flex items-center justify-end will-change-transform"
+          className="absolute inset-0 flex items-center justify-start will-change-transform"
           style={{ transform: toTransform, transition }}
         >
           {toText}

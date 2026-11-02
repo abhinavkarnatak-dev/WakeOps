@@ -12,12 +12,12 @@ export function OrganizationForm() {
   useActionToast(state);
 
   return (
-    <form action={formAction} className="mt-8 space-y-5">
+    <form action={formAction} className="mt-10 space-y-4">
       <label className="block">
-        <span className="mb-2 block text-sm font-medium">Organization name</span>
+        <span className="mb-2 block text-sm text-zinc-400">Organization name</span>
         <input
           autoComplete="organization"
-          className="w-full rounded-xl border border-white/10 bg-[#101111] px-4 py-3 outline-none transition focus:border-lime-300"
+          className="h-14 w-full rounded-2xl border border-white/10 bg-white/[0.03] px-5 text-lg text-white outline-none transition placeholder:text-zinc-600 focus:border-signal focus:bg-signal/[0.04] focus:shadow-[0_0_0_4px_rgba(190,242,100,0.08)]"
           maxLength={80}
           minLength={2}
           name="name"
@@ -26,7 +26,7 @@ export function OrganizationForm() {
         />
       </label>
       <button
-        className="rounded-xl bg-lime-300 px-5 py-3 font-semibold text-zinc-950 transition hover:bg-lime-200 disabled:opacity-60"
+        className="h-14 w-full rounded-full bg-signal font-semibold text-black transition hover:bg-white disabled:opacity-60"
         disabled={pending}
         type="submit"
       >

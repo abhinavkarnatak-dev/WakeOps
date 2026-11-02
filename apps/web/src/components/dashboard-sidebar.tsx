@@ -1,17 +1,46 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { SignOutButton } from '@/components/sign-out-button';
 
+const icons = {
+  overview: 'M3 12h4l3-8 4 16 3-8h4',
+  incidents: 'M12 3 2 20h20L12 3Zm0 6v5m0 3v.5',
+  organization: 'M4 20V8l8-5 8 5v12M9 20v-6h6v6',
+  integrations: 'M9 7V3m6 4V3M7 7h10v4a5 5 0 0 1-10 0V7Zm5 9v5',
+};
+
 const navigation = [
-  { href: '/dashboard', label: 'Overview', mark: 'OV' },
-  { href: '/dashboard/incidents', label: 'Incidents', mark: 'IN' },
-  { href: '/dashboard/setup', label: 'Organization', mark: 'OR' },
-  { href: '/dashboard/integrations', label: 'Integrations', mark: 'IG' },
+  { href: '/dashboard', label: 'Overview', icon: icons.overview },
+  { href: '/dashboard/incidents', label: 'Incidents', icon: icons.incidents },
+  { href: '/dashboard/setup', label: 'Organization', icon: icons.organization },
+  { href: '/dashboard/integrations', label: 'Integrations', icon: icons.integrations },
 ];
+
+function NavIcon({ path }: { path: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-[18px]"
+      aria-hidden="true"
+    >
+      <path d={path} />
+    </svg>
+  );
+}
+
+function BrandMark() {
+  return <Image src="/icon.svg" alt="" width={34} height={34} className="shrink-0" priority />;
+}
 
 export function DashboardSidebar({
   organizationName,
@@ -61,15 +90,15 @@ export function DashboardSidebar({
   }, []);
 
   return (
-    <aside className="relative z-30 border-b border-white/8 bg-[#080909] md:fixed md:inset-y-0 md:left-0 md:z-20 md:w-64 md:border-r md:border-b-0">
+    <aside className="sticky top-0 z-30 border-b border-white/8 bg-[#070808]/90 backdrop-blur-xl md:fixed md:inset-y-3 md:left-3 md:z-20 md:w-60 md:rounded-[26px] md:border md:border-white/[0.07] md:bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.01))] md:shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
       <div ref={mobileMenu} className="md:hidden">
         <div className="flex h-16 items-center justify-between px-5">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-lime-300 text-sm font-black text-black shadow-[0_0_24px_rgba(190,242,100,0.18)]">
-              W
-            </div>
+            <BrandMark />
             <div className="min-w-0">
-              <p className="text-[15px] font-bold tracking-tight text-white">WakeOps</p>
+              <p className="font-display text-[15px] font-extrabold tracking-[-0.02em] text-white">
+                WakeOps
+              </p>
               <p className="truncate text-[11px] text-zinc-500">{organizationName}</p>
             </div>
           </div>
@@ -86,9 +115,7 @@ export function DashboardSidebar({
               <span
                 className={`h-px w-4 bg-current transition ${mobileOpen ? 'translate-y-1 rotate-45' : ''}`}
               />
-              <span
-                className={`h-px w-4 bg-current transition ${mobileOpen ? 'opacity-0' : ''}`}
-              />
+              <span className={`h-px w-4 bg-current transition ${mobileOpen ? 'opacity-0' : ''}`} />
               <span
                 className={`h-px w-4 bg-current transition ${mobileOpen ? '-translate-y-1 -rotate-45' : ''}`}
               />
@@ -114,16 +141,12 @@ export function DashboardSidebar({
                     onClick={() => setMobileOpen(false)}
                     className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition ${
                       active
-                        ? 'bg-lime-300 text-black'
+                        ? 'bg-white/[0.07] text-white'
                         : 'text-zinc-400 hover:bg-white/5 hover:text-white'
                     }`}
                   >
-                    <span
-                      className={`grid size-7 place-items-center rounded-lg text-[9px] font-black tracking-wider ${
-                        active ? 'bg-black/10' : 'bg-white/5 text-zinc-500'
-                      }`}
-                    >
-                      {item.mark}
+                    <span className={active ? 'text-signal' : 'text-zinc-500'}>
+                      <NavIcon path={item.icon} />
                     </span>
                     <span className="font-medium">{item.label}</span>
                   </Link>
@@ -182,16 +205,17 @@ export function DashboardSidebar({
       </div>
 
       <div className="hidden h-full flex-col md:flex">
-        <div className="flex h-20 items-center gap-3 px-5">
-          <div className="grid size-9 place-items-center rounded-xl bg-lime-300 text-sm font-black text-black shadow-[0_0_24px_rgba(190,242,100,0.18)]">
-            W
-          </div>
+        <div className="flex h-20 items-center gap-3 px-5 pt-1">
+          <BrandMark />
           <div>
-            <p className="text-[15px] font-bold tracking-tight text-white">WakeOps</p>
+            <p className="font-display text-[15px] font-extrabold tracking-[-0.02em] text-white">
+              WakeOps
+            </p>
             <p className="max-w-40 truncate text-[11px] text-zinc-500">{organizationName}</p>
           </div>
         </div>
 
+        <p className="px-6 pt-4 pb-2 text-xs text-zinc-600">Workspace</p>
         <nav className="flex gap-2 overflow-x-auto px-3 pb-4 md:block md:space-y-1 md:overflow-visible md:pb-0">
           {navigation.map((item) => {
             const active =
@@ -200,18 +224,21 @@ export function DashboardSidebar({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                className={`group relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
                   active
-                    ? 'bg-lime-300 text-black'
-                    : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                    ? 'bg-white/[0.07] text-white'
+                    : 'text-zinc-400 hover:bg-white/[0.04] hover:text-white'
                 }`}
               >
                 <span
-                  className={`grid size-7 place-items-center rounded-lg text-[9px] font-black tracking-wider ${
-                    active ? 'bg-black/10' : 'bg-white/5 text-zinc-500 group-hover:text-zinc-300'
+                  className={`absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-signal shadow-[0_0_12px_#bef264] transition-all duration-500 ease-out-expo ${
+                    active ? 'opacity-100' : 'scale-y-0 opacity-0'
                   }`}
+                />
+                <span
+                  className={`transition-colors ${active ? 'text-signal' : 'text-zinc-500 group-hover:text-zinc-300'}`}
                 >
-                  {item.mark}
+                  <NavIcon path={item.icon} />
                 </span>
                 <span className="font-medium">{item.label}</span>
               </Link>
@@ -222,7 +249,10 @@ export function DashboardSidebar({
         <div className="mt-auto hidden p-4 md:block">
           <div className="mb-4 rounded-xl border border-white/8 bg-white/[0.025] p-3">
             <div className="flex items-center gap-2 text-xs text-zinc-400">
-              <span className="size-2 rounded-full bg-lime-300 shadow-[0_0_10px_rgba(190,242,100,0.6)]" />
+              <span className="relative flex size-2">
+                <span className="absolute inset-0 animate-ping rounded-full bg-signal opacity-50" />
+                <span className="relative size-2 rounded-full bg-signal shadow-[0_0_10px_rgba(190,242,100,0.6)]" />
+              </span>
               Alert pipeline online
             </div>
           </div>

@@ -1,8 +1,7 @@
 import { phoneCountries, splitContactPhone } from '@wakeops/shared';
-import { CountrySelect } from './country-select';
+import { fieldClass } from '@/components/dashboard-ui';
 
-const fieldClass =
-  'w-full rounded-xl border border-white/10 bg-[#101111] px-3 py-2 text-zinc-100 outline-none transition focus:border-lime-300';
+import { CountrySelect } from './country-select';
 
 export function ContactFields({
   engineer,
@@ -15,7 +14,7 @@ export function ContactFields({
   return (
     <>
       <label className="block space-y-2">
-        <span className="text-sm">Name</span>
+        <span className="text-sm text-zinc-400">Name</span>
         <input
           name="name"
           required
@@ -27,7 +26,7 @@ export function ContactFields({
         />
       </label>
       <label className="block space-y-2">
-        <span className="text-sm">Email</span>
+        <span className="text-sm text-zinc-400">Email</span>
         <input
           name="email"
           type="email"
@@ -38,8 +37,8 @@ export function ContactFields({
         />
       </label>
       <div className="space-y-2">
-        <p className="text-sm">Phone number</p>
-        <div className="grid grid-cols-[7rem_minmax(0,1fr)] overflow-hidden rounded-xl border border-white/10 bg-[#101111] transition focus-within:border-lime-300">
+        <p className="text-sm text-zinc-400">Phone number</p>
+        <div className="grid h-11 grid-cols-[7rem_minmax(0,1fr)] overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition focus-within:border-signal/70 focus-within:shadow-[0_0_0_4px_rgba(190,242,100,0.07)]">
           <CountrySelect defaultCountry={phone.country} countries={phoneCountries} />
           <label className="min-w-0">
             <span className="sr-only">Local phone number</span>
@@ -50,7 +49,7 @@ export function ContactFields({
               maxLength={30}
               defaultValue={phone.nationalNumber}
               placeholder="9876543210"
-              className="w-full min-w-0 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-inset focus:ring-lime-300"
+              className="h-full w-full min-w-0 bg-transparent px-3 text-sm outline-none placeholder:text-zinc-600"
               autoComplete="tel-national"
             />
           </label>

@@ -76,7 +76,7 @@ export function GrafanaConnection({ configured, secretHint, lastVerifiedAt }: Pr
           <input type="hidden" name="operation" value={configured ? 'rotate' : 'generate'} />
           <button
             disabled={pending}
-            className="rounded-lg bg-lime-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-lime-200 disabled:opacity-50"
+            className="rounded-lg bg-lime-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-white disabled:opacity-50"
           >
             {pending ? 'Saving...' : configured ? 'Rotate secret' : 'Generate credentials'}
           </button>

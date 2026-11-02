@@ -49,20 +49,33 @@ export function IncidentFilters({
         if (timer.current) clearTimeout(timer.current);
         applyFilters();
       }}
-      className="ml-auto flex w-full flex-col justify-end gap-2 sm:w-fit sm:flex-row"
+      className="flex w-full flex-col justify-end gap-2 sm:w-fit sm:flex-row"
     >
       <label className="sr-only" htmlFor={`${controlId}-incident-search`}>
         Search incidents
       </label>
-      <input
-        id={`${controlId}-incident-search`}
-        type="search"
-        name="q"
-        defaultValue={query}
-        onInput={scheduleFilters}
-        placeholder="Search incidents"
-        className="min-w-0 rounded-xl border border-white/10 bg-[#0b0c0c] px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-lime-300 sm:w-72"
-      />
+      <div className="relative">
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-zinc-500"
+        >
+          <circle cx="9" cy="9" r="5.5" />
+          <path d="m13.5 13.5 3 3" />
+        </svg>
+        <input
+          id={`${controlId}-incident-search`}
+          type="search"
+          name="q"
+          defaultValue={query}
+          onInput={scheduleFilters}
+          placeholder="Search incidents"
+          className="h-11 w-full min-w-0 rounded-full border border-white/10 bg-white/[0.03] pr-4 pl-10 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-signal/70 focus:shadow-[0_0_0_4px_rgba(190,242,100,0.07)] sm:w-72"
+        />
+      </div>
       <label className="sr-only" htmlFor={`${controlId}-incident-status`}>
         Filter by status
       </label>
@@ -71,7 +84,7 @@ export function IncidentFilters({
         name="status"
         defaultValue={status ?? ''}
         onChange={applyFilters}
-        className="rounded-xl border border-white/10 bg-[#0b0c0c] px-3.5 py-2.5 text-sm text-zinc-300 outline-none transition focus:border-lime-300"
+        className="h-11 rounded-full border border-white/10 bg-[#0a0c0b] px-4 text-sm text-zinc-300 outline-none transition focus:border-signal/70"
       >
         <option value="">All statuses</option>
         {incidentStatuses.map((item) => (

@@ -62,7 +62,7 @@ export function SetupForm({
           className={
             compact
               ? 'rounded-md px-2 py-1 text-sm text-red-300 hover:bg-red-950/50 disabled:opacity-50'
-              : 'rounded-xl bg-lime-300 px-4 py-2 font-semibold text-zinc-950 transition hover:bg-lime-200 disabled:opacity-50'
+              : 'rounded-full bg-signal px-5 py-2 font-semibold text-zinc-950 transition hover:bg-white disabled:opacity-50'
           }
         >
           {pending ? 'Working...' : operation === 'update' ? 'Save changes' : 'Save'}

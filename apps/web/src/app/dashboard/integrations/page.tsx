@@ -1,4 +1,5 @@
 import { database } from '@wakeops/database';
+import { PageHeader } from '@/components/dashboard-ui';
 import { requireOrganization } from '@/lib/organization';
 import { GrafanaConnection } from './grafana-connection';
 import { CopyValueButton } from '@/components/copy-value-button';
@@ -49,16 +50,12 @@ export default async function IntegrationsPage({
 
   return (
     <div className="mx-auto max-w-[1400px] px-5 py-7 sm:px-8 lg:px-10 lg:py-10">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lime-300">Connections</p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-        Connect services
-      </h1>
-      <p className="mt-2 max-w-3xl text-zinc-500">
-        Configure each provider in its own setup window. Service cards stay compact and show only
-        the current connection state.
-      </p>
-
-      <div className="mt-8 grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <PageHeader
+        kicker="Integrations"
+        title="Where alerts come in, and go out"
+        description="Grafana sends the alert. WakeOps calls, then follows up by email and Slack. Each connection is set up in its own window."
+      />
+      <div className="mt-10 grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
         <IntegrationCard
           name="Email"
           service="email"
@@ -67,7 +64,7 @@ export default async function IntegrationsPage({
           tone={emailConfigured ? 'lime' : 'zinc'}
         >
           <EmailConnection configured={emailConfigured} />
-          <div className="mt-6 rounded-xl border border-white/8 bg-black/20 p-4 text-sm leading-6 text-zinc-500">
+          <div className="mt-6 rounded-2xl border border-white/[0.07] bg-black/30 p-5 text-sm leading-6 text-zinc-500">
             Email uses the platform&apos;s configured Resend sender. Organization engineers receive
             alerts at their saved email addresses.
           </div>
@@ -102,14 +99,14 @@ export default async function IntegrationsPage({
             lastVerifiedAt={integration?.lastVerifiedAt?.toISOString() ?? null}
           />
           <div className="mt-6 space-y-4">
-            <div className="rounded-xl border border-white/8 bg-black/20 p-4">
+            <div className="rounded-2xl border border-white/[0.07] bg-black/30 p-5">
               <p className="font-semibold text-white">1. Copy the webhook URL</p>
               <p className="mt-2 text-sm leading-6 text-zinc-500">
                 Grafana Cloud requires a public HTTPS URL. This endpoint belongs to the current
                 WakeOps organization.
               </p>
               <div className="relative mt-3">
-                <code className="block overflow-x-auto rounded-lg bg-black/40 p-3 pr-12 text-xs text-lime-300">
+                <code className="block overflow-x-auto rounded-xl border border-white/[0.06] bg-black/50 p-3.5 pr-12 font-mono text-xs text-signal">
                   {webhookUrl}
                 </code>
                 <CopyValueButton
@@ -120,7 +117,7 @@ export default async function IntegrationsPage({
                 />
               </div>
             </div>
-            <div className="rounded-xl border border-white/8 bg-black/20 p-4">
+            <div className="rounded-2xl border border-white/[0.07] bg-black/30 p-5">
               <p className="font-semibold text-white">2. Create the Grafana contact point</p>
               <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-zinc-400">
                 <li>Open Alerts and IRM, then Alerting.</li>
@@ -135,7 +132,6 @@ export default async function IntegrationsPage({
           </div>
         </IntegrationCard>
       </div>
-
     </div>
   );
 }

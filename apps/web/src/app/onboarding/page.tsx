@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/auth';
+import { AuthShell } from '@/components/auth-shell';
 import { SignOutButton } from '@/components/sign-out-button';
 
 import { OrganizationForm } from './organization-form';
@@ -23,21 +24,47 @@ export default async function OnboardingPage() {
   if (membership) redirect('/dashboard');
 
   return (
-    <main className="grid min-h-screen place-items-center px-6">
-      <section className="w-full max-w-xl rounded-2xl border border-white/8 bg-[#0b0c0c] p-8 shadow-2xl shadow-black/30">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-lime-300">Step 1 of onboarding</p>
-            <h1 className="mt-2 text-3xl font-bold">Create your organization</h1>
-          </div>
-          <SignOutButton />
-        </div>
-        <p className="mt-3 text-zinc-400">
-          This becomes the top-level workspace that owns applications, engineers, integrations, and
-          incidents. You will be its first admin.
-        </p>
-        <OrganizationForm />
-      </section>
-    </main>
+    <AuthShell
+      aside={{
+        title: (
+          <>
+            One workspace
+            <br />
+            for every
+            <br />
+            <span className="text-signal">3 AM page.</span>
+          </>
+        ),
+        body: 'Your organization owns the applications, engineers, integrations and incident history. You will be its first admin.',
+      }}
+    >
+      <div className="flex items-center justify-between gap-4">
+        <p className="font-mono text-xs text-zinc-500">Step 1 of 3</p>
+        <SignOutButton />
+      </div>
+      <h1 className="mt-6 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+        Name your organization
+      </h1>
+      <p className="mt-4 text-base leading-7 text-zinc-400">
+        Usually your company or team name. You will map services to engineers next.
+      </p>
+      <OrganizationForm />
+      <ol className="mt-12 space-y-3 border-t border-white/8 pt-6 text-sm">
+        {['Name your organization', 'Map services to engineers', 'Connect Grafana'].map(
+          (item, index) => (
+            <li key={item} className="flex items-center gap-3">
+              <span
+                className={`grid size-6 place-items-center rounded-full font-mono text-[11px] ${
+                  index === 0 ? 'bg-signal text-black' : 'border border-white/12 text-zinc-500'
+                }`}
+              >
+                {index + 1}
+              </span>
+              <span className={index === 0 ? 'text-white' : 'text-zinc-500'}>{item}</span>
+            </li>
+          ),
+        )}
+      </ol>
+    </AuthShell>
   );
 }

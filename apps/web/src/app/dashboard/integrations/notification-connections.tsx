@@ -36,7 +36,7 @@ export function EmailConnection({ configured }: { configured: boolean }) {
       <form action={action} className="mt-5">
         <button
           disabled={pending || !configured}
-          className="rounded-xl bg-lime-300 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-lime-200 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-full bg-signal px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           {pending ? 'Sending...' : 'Send test email'}
         </button>
@@ -99,7 +99,7 @@ export function SlackConnection({
       {!connected ? (
         <a
           href="/api/integrations/slack/connect"
-          className="mt-5 inline-flex rounded-xl bg-lime-300 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-lime-200"
+          className="mt-5 inline-flex rounded-full bg-signal px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-white"
         >
           Connect Slack
         </a>
@@ -131,7 +131,7 @@ export function SlackConnection({
             </select>
             <button
               disabled={saving}
-              className="rounded-xl bg-lime-300 px-4 py-2.5 text-sm font-semibold text-black disabled:opacity-40"
+              className="rounded-full bg-signal px-5 py-2.5 text-sm font-semibold text-black disabled:opacity-40"
             >
               {saving ? 'Saving...' : 'Save channel'}
             </button>

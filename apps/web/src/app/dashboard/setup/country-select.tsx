@@ -14,7 +14,7 @@ export function CountrySelect({
   const [selected, setSelected] = useState(defaultCountry);
   const country = countries.find((item) => item.code === selected) ?? countries[0]!;
   return (
-    <label className="relative block h-full min-w-0 border-r border-white/10 focus-within:ring-2 focus-within:ring-inset focus-within:ring-lime-300">
+    <label className="relative block h-full min-w-0 border-r border-white/10 focus-within:bg-white/[0.03]">
       <span className="sr-only">Country calling code</span>
       <span
         aria-hidden="true"
@@ -23,7 +23,16 @@ export function CountrySelect({
         <span className="whitespace-nowrap">
           {country.code} +{country.callingCode}
         </span>
-        <span className="text-xs text-zinc-500">v</span>
+        <svg
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="size-3 text-zinc-500"
+          aria-hidden="true"
+        >
+          <path d="m3 4.5 3 3 3-3" />
+        </svg>
       </span>
       <select
         name="phoneCountry"
