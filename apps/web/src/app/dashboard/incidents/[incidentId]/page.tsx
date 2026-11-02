@@ -101,7 +101,13 @@ export default async function IncidentDetailPage({
     }
     const attempt = attemptId ? attempts.get(attemptId) : null;
     const [title, description] = timelineCopy(event.type, value, attempt?.engineer.name ?? null);
-    return { id: event.id, type: event.type, occurredAt: event.occurredAt, title, description };
+    return {
+      id: event.id,
+      type: event.type as string,
+      occurredAt: event.occurredAt,
+      title,
+      description,
+    };
   });
   if (incident.acknowledgedAt) {
     const completedCall = incident.callAttempts.findLast(
